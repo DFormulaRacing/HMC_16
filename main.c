@@ -87,11 +87,11 @@ int main (void) {
   LED_Initialize();
   Buttons_Initialize();
   stdout_init();                                           /* Initializ Serial interface */
-//printf ("Hello World\n\r");
+printf ("Hello World\n\r");
 
   SysTick_Config(SystemCoreClock / 1000);                  /* SysTick 1 msec interrupts */
 
-//	SQ_TIM3_Init();
+	SQ_TIM3_Init();
 	
   for (;;) {
     LED_On(num);                                           /* Turn specified LED on */
@@ -106,12 +106,12 @@ int main (void) {
       num = 0;                                             /* Restart with first LED */
     }
 
-		printf ("Hello World\n\r");
+		printf ("Hello All!\n\r");
 
 		if(Print_Flag)
 		{
 			Print_Flag	=	false;
-//			printf ("Hello World\n\r");
+			printf ("Hello Flag\n\r");
 		}
 		else
 		{
