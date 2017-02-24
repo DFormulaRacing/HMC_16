@@ -44,7 +44,7 @@
 #define USART_BAUDRATE          115200
 
 //   <o>USART clock
-#define USART_CLK             50000000
+#define USART_CLK             45000000	//50000000	//	SystemCoreClock/4
 
 // </h>
 
