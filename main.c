@@ -18,53 +18,107 @@
 //#include 	"stm32f4xx_flash.h"
 //#include 	"stm32f4xx_rcc.h"
 //#include 	"stm32f4xx_tim.h"
+#include "HMC_state_machine.h"
 
 #include <RTE_components.h>
 
 // a small helper... 
 #define	until(arg)	while(!(arg))
+#define ENABLE_CAN_INTERRUPTS (1)
 
 volatile	uint32_t	JLM_Debug	=	0;
 
 // Setting Up Message Table
 const uint32_t STD = CAN_Id_Standard;
 const uint32_t EXT = CAN_Id_Extended;
-const uint32_t msgTableSize = 20;
+ uint32_t msgTableSize = 20;
+
+uint32_t shaun_debug;
 
 //#pragma pack
 
-	// create structure for message tble
+enum HMC_states{
+	off,
+	start,
+	init,
+	brake,
+	clutch,
+	prop_torqe,
+}; 
+
+enum HMC_states state = off;
+float engine_torque;
+float motor_torque;
+float kP;
+
+// Structures for BAMOCAR data
+typedef struct Bamo_data_16_s{
+	uint8_t REGID; // change back to uint8_t
+	uint16_t data;
+} Bamo_data_16_t;
+
+/* typedef struct Bamo_data_32_s {
+	uint8_t REGID;
+	uint32_t data;
+} Bamo_data_32_t; */
+
+// union for CAN Data
+typedef union CAN_data_u {
+	uint64_t   _64;
+	uint8_t    _8[8];
+  uint16_t   _16[4];
+  uint32_t   _32[2];
+  float      _float[2];
+  double     _double;
+
+	Bamo_data_16_t Bamo_data_16;
+
+	//Bamo_data_32_t Bamo_data_32;
+
+} CAN_data_t;
+
+// create structure for message tble
 typedef struct CAN_msg_s {
 	uint32_t messageID;
 	uint32_t messageType;
 	uint32_t REGID;
-	uint64_t data;
+ 	CAN_data_t data;
+	uint32_t update;
+	int row;
+	int col;
+	char name[10];
+	int msg_count;
+	int old_count;
 
 } CAN_msg_t;
 
+
+input_vector_t input_vector;
+
+const int column = 12;
 	// create message table
-CAN_msg_t msgTable[msgTableSize] = 
+volatile CAN_msg_t msgTable[] =
 {	
 	// PE3 messages
-	{0x0CFFF048, EXT, 0, 0}, //PE3 1
-	{0x0CFFF148, EXT, 0, 0}, //PE3 2
-	{0x0CFFF548, EXT, 0, 0}, //PE3 6
-	{0x0CFFFB48, EXT, 0, 0}, //PE3 12
+	{0x0CFFF048, EXT, 0, 0, 1, 1, column, "PE3 1",0,0}, //PE3 1
+	{0x0CFFF148, EXT, 0, 0, 1, 2, column, "PE3 2",0,0}, //PE3 2
+	{0x0CFFF548, EXT, 0, 0, 1, 3, column, "PE3 6",0,0}, //PE3 6
+	{0x0CFFFB48, EXT, 0, 0, 1, 4, column, "PE3 12",0,0}, //PE3 12
 
 	// Orion messages
-	{0x03B, STD, 0, 0}, // BMS 1
-	{0x3CB, STD, 0, 0}, // BMS 2
-	{0x6B2, STD, 0, 0}, // BMS 3
-	{0x623, STD, 0, 0}, // BMS 4
-	{0x190, STD, 0, 0}, // BMS 5
+	{0x03B, STD, 0, 0, 1, 5, column, "BMS1",0,0}, // BMS 1
+	{0x3CB, STD, 0, 0, 1, 6, column, "BMS2",0,0}, // BMS 2
+	{0x6B2, STD, 0, 0, 1, 7, column, "BMS3",0,0}, // BMS 3
+	{0x623, STD, 0, 0, 1, 8, column, "BMS4",0,0}, // BMS 4
+	{0x190, STD, 0, 0, 1, 9, column, "BMS5",0,0}, // BMS 5
 	//{0x00, STD, 0} // BMS 6
 
 	// BAMOCAR messages
-	{0x180, STD, 0x30, 0}, // BAMOCAR 1 - RPM
-	{0x180, STD, 0x20, 0}, // BAMOCAR 2 - Motor Current
-	{0x180, STD, 0xA0, 0}, // BAMOCAR 3 - Motor Torque
-	{0x180, STD, 0x84, 0}, // BAMOCAR 4 - Motor Fault
-	{0x180, STD, 0x49, 0}, // BAMOCAR 5 - Motor Temp
+	{0x180, STD, 0x30, 0, 1,10, column, "BAMO1",0,0}, // BAMOCAR 1 - RPM
+	{0x180, STD, 0x20, 0, 1,11, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current
+	{0x180, STD, 0xA0, 0, 1,12, column, "BAMO3",0,0}, // BAMOCAR 3 - Motor Torque
+	{0x180, STD, 0x84, 0, 1,13, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Fault
+	{0x180, STD, 0x49, 0, 1,14, column, "BAMO5",0,0}, // BAMOCAR 5 - Motor Temp
 
 	// NOTE: Bamocar transmits on ONE CAN message ID
 	// The REGID data field signifies what kind of
@@ -74,45 +128,52 @@ CAN_msg_t msgTable[msgTableSize] =
 
 // Ring Buffer Stuff
 
-const int BUFFER_SIZE = 5;
+const int BUFFER_SIZE = 100;
 CanRxMsg buffer[BUFFER_SIZE] = {0} ;
-int readIdx = 0;
-int writeIdx = 0;
-int ringCounter = 0;
+volatile int readIdx = 0;
+volatile int writeIdx = 0;
+volatile int ringCounter = 0;
 
 
 void addToRing (CanRxMsg x) {
 	if(ringCounter >= BUFFER_SIZE) {
-		while(1);
+		//while(1);
 		// BUFFER IS FULL!
-		//printf("Buffer is full\n");
+		printf("Buffer is full\n");
 		return;
 	}
-
-
+	
 	buffer[writeIdx] = x;
 	writeIdx++;
 	if (writeIdx >= BUFFER_SIZE){
 		writeIdx = 0;
 	}
 	ringCounter++;	
-
 }
 
-bool readFromRing (CAN_msg_t *msgTable) {
+bool readFromRing (volatile CAN_msg_t *msgTable) {
 	if (ringCounter ==0) {
 		//printf("Buffer is empty\n");
 		return false;
 	}
-	
-	//CAN_msg_t a;
-	//a = *msgTable;
-	// *a =  buffer[readIdx];
-	// a =  &(buffer[readIdx]);
 
-	memcpy(&msgTable->data, &buffer[readIdx].Data[0], sizeof(msgTable->data));
+	memcpy((void*)&msgTable->data, (void*)&buffer[readIdx].Data, sizeof(msgTable->data));
+			// msgTable[i].data = *((uint64_t *)&(My_RX_message.Data[0]));
+			// memcpy(&msgTable[i].data, &My_RX_message.Data[0], sizeof(msgTable[i].data));
+	msgTable->update = 1;
+	msgTable->msg_count++;
+//printf("%llu\n\r", msgTable->data);
 
 	ringCounter--;
+	if(ringCounter<0)
+	{
+		ringCounter=0;
+	}
+	else
+	{
+		// do nothing
+	}
+	
 	readIdx++;
 	if (readIdx >= BUFFER_SIZE)
 	{
@@ -125,10 +186,10 @@ bool readFromRing (CAN_msg_t *msgTable) {
 bool isEmpty () {
 	if (ringCounter == 0){
 		return true;
-	} else{
+	} 
+	else{
 		return false;
 	}
-
 }
 
 int i = 0;
@@ -248,115 +309,121 @@ volatile	int	My_Time = 0;
 /*----------------------------------------------------------------------------
  * main: blink LED and check button state
  *----------------------------------------------------------------------------*/
-int main (void) {
+ int main (void) {
   int32_t max_num = LED_GetCount();
-//  int32_t num = 0;
 
-	//don't need/want this:  SystemCoreClockConfigure();                              /* configure HSI as System Clock */
+	//SystemCoreClockConfigure();                              /* configure HSI as System Clock */
   SystemCoreClockUpdate();
-
   LED_Initialize();
   Buttons_Initialize();
   stdout_init();                                           /* Initialize Serial interface */
-
-	printf ("Hello World\n\r");
-
   SysTick_Config(SystemCoreClock / 1000);                  /* SysTick 1 msec interrupts */
-
 	DFR_TIM3_Init();				//	Initialize TIM3 for a 1 mSec Interrupt  (TIM3 ISR)
 	DFR_CAN_Init(0xFFFF12);
+	 
+	
 
   for (;;) {
-#if		000		//	disable this block
-    LED_On(num);                                           /* Turn specified LED on */
-    Delay(500);                                            /* Wait 500ms */
-    while (Buttons_GetState() & (1 << 0));                 /* Wait while holding USER button */
-    LED_Off(num);                                          /* Turn specified LED off */
-    Delay(500);                                            /* Wait 500ms */
-    while (Buttons_GetState() & (1 << 0));                 /* Wait while holding USER button */
 
-    num++;                                                 /* Change LED number */
-    if (num >= max_num) {
-      num = 0;                                             /* Restart with first LED */
-    }
 
-		printf ("Hello All!\n\r");
-#endif
+  input_vector.engine_rpm = msgTable[0].data._16[0];
+	 
+	input_vector.engine_MAP = msgTable[1].data._16[1];
+	
+	input_vector.engine_temp = msgTable[2].data._16[1];
+
+	//input_vector.motor_rpm = msgTable[9].data.Bamo_data_16.data; // change back
+	input_vector.motor_rpm = (uint16_t)(msgTable[9].data._8[1]+msgTable[9].data._8[2]*256); // change back
+	memcpy((void*)&input_vector.motor_rpm, (void*)&msgTable[9].data._8[1], sizeof(uint16_t));
+
+	input_vector.motor_torque_rdval = msgTable[11].data.Bamo_data_16.data;
+
 		if(Print_Flag)		//	TIM3_IRQHandler() ISR sets Print_Flag, we clear it here...
 		{
 			Print_Flag	=	false;
-//			printf ("Hello Flag\n\r");
-			printf("%d\r", My_Time);	//	display My_Time
 			My_Time	+=	5;						//	add another 5 seconds to My_Time
-
 			CAN_Transmit(CAN1, &My_TX_message);		//	Let's send a message...
-			
 			JLM_Debug	=	CAN_TransmitStatus(CAN1, 0);
 		}
 		else
 		{
 			//	...
 		}
-
 		// CAN_Transmit(CAN1, &My_TX_message); // test
-
 		//	If there's a CAN message, let's collect it...
 		{
+			#if	defined(ENABLE_CAN_INTERRUPTS)
+			if(isEmpty())
+			{
+				// do nothing ring is empty
+			}
+			else 
+			{ 	
+				bool done = false;
+				
+				// parse new message
+				
+				i = 0;
+				msgTableSize = (sizeof(msgTable)/sizeof(CAN_msg_t));
+				
+				while((done == false) && (i < msgTableSize)) {
+/* change back to 0x180*/
+					if( 
+						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType) && buffer[readIdx].StdId != 0x180) ||  // Regular
+						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].Data[0] == msgTable[i].REGID )) || // Bamocar
+						((buffer[readIdx].ExtId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType)) // Extended
+					) {
+						readFromRing(&msgTable[i]); // Fill in DOUBLE CHECK*****
+						done = true;
+					} else {
+						i++; // increment
+					}
+				}  
+shaun_debug = 0x123;
+			}
+			#else
 			if(CAN_MessagePending(CAN1, CAN_FIFO0)	)
 			{ 	
 				bool done = false;
 				
 				CAN_Receive(CAN1, CAN_FIFO0, &My_RX_message);
 
-				My_TX_message.Data[0]++;
+				My_TX_message.Data[0]++; // if we get a ring, we visually acknowledge it by incrementing
 
 				addToRing(My_RX_message);
 
 				CAN_FIFORelease(CAN1, CAN_FIFO0);
 				
+				
+				
 				// put message handling code here
 				
 				// parse new message
-				while((done == false) && (i < msgTableSize)) {
-
-					if( 
-//						((My_RX_message.StdId == msgTable[i].messageID) && (My_RX_message.IDE == msgTable[i].messageType)) ||  // Regular
-//						((My_RX_message.StdId == 0x180) && (My_RX_message.Data[0] == msgTable[i].REGID )) || // Bamocar
-//						((My_RX_message.ExtId == msgTable[i].messageID) && (My_RX_message.IDE == msgTable[i].messageType)) // Extended
-//						((My_RX_message.StdId == msgTable[i].messageID) && (My_RX_message.IDE == msgTable[i].messageType)) ||  // Regular
-//						((My_RX_message.StdId == 0x180) && (My_RX_message.Data[0] == msgTable[i].REGID )) || // Bamocar
-//						((My_RX_message.ExtId == msgTable[i].messageID) && (My_RX_message.IDE == msgTable[i].messageType)) // Extended
-
-						((buffer[readCount].StdId == msgTable[i].messageID) && (buffer[readCount].IDE == msgTable[i].messageType)) ||  // Regular
-						((buffer[readCount].StdId == 0x180) && (buffer[readCount].Data[0] == msgTable[i].REGID )) || // Bamocar
-						((buffer[readCount].ExtId == msgTable[i].messageID) && (buffer[readCount].IDE == msgTable[i].messageType)) // Extended
-
-
-
 				
+				i = 0;
+				msgTableSize = (sizeof(msgTable)/sizeof(CAN_msg_t));
+				
+				while((done == false) && (i < msgTableSize)) {
+/* change back to 0x180*/
+					if( 
+						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType) && buffer[readIdx].StdId != 0x180) ||  // Regular
+						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].Data[0] == msgTable[i].REGID )) || // Bamocar
+						((buffer[readIdx].ExtId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType)) // Extended
 					) {
-						
-						// msgTable[i].data = *((uint64_t *)&(My_RX_message.Data[0]));
-						
-						// memcpy(&msgTable[i].data, &My_RX_message.Data[0], sizeof(msgTable[i].data));
-
-						readFromRing(&msgTable[i]); // Fill in
-						
+						readFromRing(&msgTable[i]); // Fill in DOUBLE CHECK*****
 						done = true;
 					} else {
 						i++; // increment
-						if (i > msgTableSize){ // remember that indexing from 0
-							i = 0;
-						} else {
-							//
-						}
 					}
 				}  
+shaun_debug = 0x123;
 			}
 			else
 			{
 				//	...
 			}
+			#endif	// defined(ENABLE_CAN_INTERRUPTS)
+			
 		}
   }
 
@@ -409,7 +476,42 @@ void DFR_TIM3_Init(void)
 
 
 void	XX_mSec_Tasks(void);
+
 uint16_t	Print_Counter	=	10;
+
+void updateTerminal(void);
+
+void updateTerminal(void){
+	int i;
+	int c = 1;
+	for(i = 0; i < msgTableSize; i++){
+	
+		if(msgTable[i].update == 1)
+		{
+			printf("\033[%d;%dH %s",msgTable[i].row,c,msgTable[i].name);
+			printf("\033[%d;%dH %llu", msgTable[i].row, msgTable[i].col, msgTable[i].data._64 );
+			//printf("%llu",msgTable[i].data);
+			msgTable[i].update = 0;
+		}
+	}
+	
+	printf("\033[%d;%dH %s",15,c,"Engine RPM");
+	printf("\033[%d;%dH %d", 15, 15, input_vector.engine_rpm);
+	
+	printf("\033[%d;%dH %s",16,c,"Engine MAP");
+	printf("\033[%d;%dH %d", 16, 15, input_vector.engine_MAP);
+	
+	printf("\033[%d;%dH %s",17,c,"Engine Temp");
+	printf("\033[%d;%dH %d", 17, 15, input_vector.engine_temp);
+	
+	printf("\033[%d;%dH %s",18,c,"Motor RPM");
+	printf("\033[%d;%dH %d", 18, 15, input_vector.motor_rpm);
+	
+	printf("\033[%d;%dH %s",19,c,"Motor RPM REGID"); // change back to Motor Torque
+	printf("\033[%d;%dH %d", 19, 15,input_vector.motor_torque_rdval); //msgTable[9].data.Bamo_data_16.REGID
+	
+}
+
 
 void TIM3_IRQHandler(void) 
 {
@@ -429,6 +531,34 @@ void TIM3_IRQHandler(void)
 }
 
 
+void msg_safety_chk (void);
+
+void msg_safety_chk(void){
+
+	int n;
+	int msg_error_count[msgTableSize-1];
+
+	for (n = 0; n < msgTableSize; n++){
+		if(msgTable[n].msg_count == msgTable[n].old_count)
+		{
+			msg_error_count[n]++;
+		}
+		else //if(msgTable[n].msg_count != msgTable[n].old_count)
+		{
+			msg_error_count[n] = 0;
+			msgTable[n].old_count = msgTable[n].msg_count;
+			// request msg function here
+		}
+
+		if(msg_error_count[n] == 20)
+		{
+			printf("\033[%d;%dH Crit. Msg Error for %s, shut down",15,25, msgTable[n].name );
+			// shutdown function
+		}
+	
+	}
+}
+
 
 volatile	uint16_t	State	=	0;
 
@@ -444,9 +574,36 @@ void	XX_mSec_Tasks(void)
 		State	=	0;
 		LED_Off(0);
 	}
+	
+	//updateTerminal();
+	//msg_safety_chk();
+	
+	state = prop_torqe; // need to figure out how we will change states
+	
+	switch(state){
+		case off:
+			kP = 0;
+			break;
+		case start:
+			kP = 0;
+			break;
+		case init:
+			kP = 0;
+			break;
+		case brake:
+			kP = 0;
+			break;
+		case clutch:
+			kP = 0;
+			break;
+		case prop_torqe:
+ 			kP = desired_kP();
+			engine_torque = get_engine_torque(); 
+			motor_torque = kP*engine_torque;
+			torque_command(motor_torque);
+			break;
+	}
 }
-
-
 
 
 
@@ -462,6 +619,7 @@ GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd;
 
 GPIO_Init(GPIOx, &GPIO_InitStructure);
 }
+
 void DFR_CAN_Init(uint32_t u32SensorID)
 {
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
@@ -597,11 +755,127 @@ JLM_Debug	=	u32SensorID;
 	#else
 		CAN_Init(CAN1,	&CAN_InitStructure);
 
-		#if		(not	defined(ENABLE_CAN_INTERRUPT_FOR_OLD_DRIVER)	)
+		#if		(defined (ENABLE_CAN_INTERRUPTS)	)
 //void CAN_ITConfig(CAN_TypeDef* CANx, uint32_t CAN_IT, FunctionalState NewState)
-//		CAN_ITConfig(CAN1, CAN_IT_TME, ENABLE)
+		
+		  {
+   NVIC_InitTypeDef NVIC_InitStructure;
+   // CAN TX Interrupt Handling
+   NVIC_InitStructure.NVIC_IRQChannel = CAN1_TX_IRQn; //USB_HP_CAN_TX_IRQChannel;
+   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 5;
+   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+   // NVIC_Init(&NVIC_InitStructure); // bring it back later
+   // CAN RX Interrupt Handling
+   NVIC_InitStructure.NVIC_IRQChannel = CAN1_RX0_IRQn; //USB_LP_CAN_RX0_IRQChannel;
+   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;
+   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+   NVIC_Init(&NVIC_InitStructure);
+  }
+			
+		CAN_ITConfig(CAN1, CAN_IT_TME, ENABLE);
+		
+		
 		#endif
 	#endif
 	}
 }
 
+
+
+#if	defined(ENABLE_CAN_INTERRUPTS)
+
+void CAN1_TX_IRQHandler(void)
+{
+  // Check if there is anything in the CAN TX queue to send; if so, send it. 
+ //[Note that CAN is not interrupt driven this leads to low bus utilization.]
+ 
+// CAN_TX_Q_Read_Index++;  // point to the next message in the Q
+// if(CAN_TX_Q_Read_Index >= CAN_TX_Q_LENGTH)
+// {
+//  CAN_TX_Q_Read_Index = 0;
+// }
+// else
+// {
+//  // ...
+// }
+// if(CAN_TX_Q_COUNT <= 0)
+// {
+//  // !!!LOGIC ERROR!!! we should never have a negative value for the Count!!!
+//  CAN_TX_Q_COUNT = 0; // Sorry attempt at recovery...
+// }
+// else
+// {
+//  CAN_TX_Q_COUNT--;     // mark the completion of transmission of the previous message
+//  if(CAN_TX_Q_COUNT > 0)
+//  {
+//   CAN_Transmit(CAN1, &CAN_TX_Q[CAN_TX_Q_Read_Index]);
+//  }
+//  else
+//  {
+//   // ...Q is empty, nothing more to send...wait for another transmission...
+//  }
+// }
+ CAN_ClearITPendingBit(CAN1, CAN_IT_TME);
+}
+
+void CAN1_RX0_IRQHandler(void)
+{
+	#if 001
+	
+			if(CAN_MessagePending(CAN1, CAN_FIFO0)	)
+			{ 	
+//				bool done = false;
+				
+				CAN_Receive(CAN1, CAN_FIFO0, &My_RX_message);
+
+				My_TX_message.Data[0]++; // if we get a ring, we visually acknowledge it by incrementing
+
+				addToRing(My_RX_message);
+
+				CAN_FIFORelease(CAN1, CAN_FIFO0);
+				
+			}
+			else
+			{
+				//	...
+			}
+	
+	 CAN_ClearITPendingBit(CAN1, CAN_IT_FF0);
+
+	#else
+	 
+ // If there's a CAN message, let's collect it...
+ if(CAN_MessagePending(CAN1, CAN_FIFO0) )
+ {
+  if(CAN_RX_Q_COUNT < (CAN_RX_Q_LENGTH-1) )
+  {
+   CAN_Receive(CAN1, CAN_FIFO0, &CAN_RX_Q[CAN_RX_Q_Write_Index]);
+   CAN_RX_Q_Write_Index++;
+   if(CAN_RX_Q_Write_Index >= CAN_RX_Q_LENGTH)
+   {
+    CAN_RX_Q_Write_Index = 0;
+   }
+   else
+   {
+    // ...
+   }
+   CAN_RX_Q_COUNT++;  // Indicate new message available
+  }
+  else //(CAN_RX_Q_COUNT >= CAN_RX_Q_LENGTH)
+  {
+   // Q is full, lose latest message...or rewrite this code to lose oldest message...
+   CanRxMsg Lost_Message;
+   CAN_Receive(CAN1, CAN_FIFO0, &Lost_Message);
+  }
+ }
+ else
+ {
+  // ...LOGIC ERROR!!! This shouldn't happen...shouldn't get an Interrupt without a message...
+ }
+ CAN_ClearITPendingBit(CAN1, CAN_IT_FF0);
+ #endif
+}
+
+#endif 
