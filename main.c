@@ -51,8 +51,6 @@ float engine_torque;
 float motor_torque;
 float kP;
 
-// test comment for git
-
 // Structures for BAMOCAR data
 typedef struct Bamo_data_16_s{
 	uint8_t REGID; // change back to uint8_t
