@@ -35,7 +35,9 @@ float electric_torque(void);
 int get_gear(void);
 float get_engine_torque(void);
 void torque_command(float motor_torque);
-enum gear shifter(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed);
+enum gear shifter_gas_mode(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed);
+enum gear shifter_hybrid_mode(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed);
+enum gear shifter_electric_mode(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed);
 void set_mode (void);
 
 typedef struct Bamo_data_16_s{
@@ -155,8 +157,8 @@ bool bamocar_init (void);
 
 volatile typedef struct SPI_output_vector_s{
 	
-	uint8_t solenoid_1; // downshift solenoid
-	uint8_t solenoid_2; // upshift button
+	uint8_t solenoid_1; // downshift solenoid -- linked to red button
+	uint8_t solenoid_2; // upshift solenoid -- linked to green button
 	uint8_t safety;
 	uint8_t ready_to_drive;
 	uint8_t rfg_rfe;

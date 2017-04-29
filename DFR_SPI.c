@@ -690,10 +690,7 @@ const int SPI_ring_size = 5;
 volatile CLT_Read_u_t CLT_read_buff[SPI_ring_size] = {0};
 
 bool add_to_SPI_ring(uint16_t x){
-	if (SPI_ring_count == 0){
-		//should never get here
-		return false;
-	}
+	
 		
 		CLT_read_buff[SPI_write_idx].word = x;
 		SPI_write_idx++;
@@ -714,23 +711,23 @@ CLT_Read_u_t OR_temp;
 CLT_Read_u_t debounced_data = {0}; // NEXT STATE
 
 int i;
-
+volatile uint16_t my_debug;
 CLT_Read_u_t debounce_SPI_input(void){
 	
-		all_ones.word = 0;
+		all_ones.word = 0xFFFF;
 		OR_temp.word = 0;
 	
 		for(i = 0; i < SPI_ring_size; i++){
 			all_ones.word &= CLT_read_buff[i].word; 		// AND all the contents of the ring buffer
 			OR_temp.word |= (CLT_read_buff[i].word);		// Or them all 
 		}
-		
+		my_debug = all_ones.word;
 		all_zeroes.word = ~OR_temp.word;							// Negate OR so you get NOR
 		
 //  NEXT_STATE 					=  (A1 * A0) + (~A0 * S )  
 // 	See State Diagram for logic
 		
-		debounced_data.word = (all_ones.word & all_zeroes.word)|((~all_zeroes.word)& debounced_data.word);
+		debounced_data.word = (all_ones.word & (~all_zeroes.word))|((~all_zeroes.word)& debounced_data.word);
  
 		return debounced_data;
 }
@@ -830,11 +827,11 @@ void	SPI1_IRQHandler(void)
 		case(wait_for_SPI_A):
 			GPIO_SetBits(GPIOC, GPIO_Pin_7);			//	SPI_CS1	PC7	CLT01-38SQ7
 			//	Read the Input chip data
-			 CLT_Read.word	=	SPI1->DR;	//	Read it to clear it, in case there's something in there.
-			// add_to_SPI_ring((uint16_t)SPI1->DR); put back
+			// CLT_Read.word	=	SPI1->DR;	//	Read it to clear it, in case there's something in there.
+			add_to_SPI_ring((uint16_t)SPI1->DR);
 			SPI1_SR	=	SPI1->SR;	//	Read it to clear it, in case there's something in there.
 			GPIO_ResetBits(GPIOB, GPIO_Pin_6);		//	SPI_CS2	PB6		VNI8200XP
-			// CLT_Read = debounce_SPI_input();
+			 CLT_Read = debounce_SPI_input();
 
 		
 			// put debouncing method here

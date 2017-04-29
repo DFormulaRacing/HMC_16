@@ -16,7 +16,7 @@ int shiftTarget; 	//gear that is being shifted to currently (while in state 6)
 enum gear t_gear; 	//Enum gear variable for target gear for shift
 
 
-enum gear shifter(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed)
+enum gear shifter_hybrid_mode(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed)
 {
     /*
     function takes in current state and returns state at end
@@ -269,6 +269,99 @@ enum gear shifter(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool 
   }
 }
 
+typedef enum gas_shift_e{
+	gas_shift_upshift,
+	gas_shift_downshift,
+	gas_shift_off,
+	gas_shift_timer_out,
+	
+} gas_shift_t;
+
+gas_shift_t gas_shift_state;
+int gas_shift_countdown;
+#define GAS_SHIFT_COUNTDOWN_LOAD 5
+
+enum gear shifter_gas_mode(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed)
+{
+	if(	gas_shift_countdown > GAS_SHIFT_COUNTDOWN_LOAD)
+		{
+			// logic fault.. recover
+			gas_shift_state = gas_shift_off;
+		}
+		else
+		if (gas_shift_countdown)
+		{
+			gas_shift_countdown--;
+		}
+		else
+		{
+				// do nothing
+		}
+
+	switch(gas_shift_state)
+	{
+		default:
+		case gas_shift_off:
+		{
+			SPI_output_vector.solenoid_1 = OFF;
+			SPI_output_vector.solenoid_2 = OFF;
+			
+			if(input_vector.green_button){
+				gas_shift_state = gas_shift_upshift;
+				gas_shift_countdown = GAS_SHIFT_COUNTDOWN_LOAD;
+			} else if(input_vector.red_button){
+				gas_shift_state = gas_shift_downshift;
+				gas_shift_countdown = GAS_SHIFT_COUNTDOWN_LOAD;
+			} else {
+				gas_shift_state = gas_shift_off;
+			}
+		}
+		break;
+		
+		case gas_shift_upshift:
+		{
+			SPI_output_vector.solenoid_1 = OFF;
+			SPI_output_vector.solenoid_2 = ON;
+			
+			if(gas_shift_countdown > 0)
+			{
+				gas_shift_state = gas_shift_upshift;
+			} else {
+				gas_shift_state = gas_shift_timer_out;
+			}
+		}
+		break;
+		
+			case gas_shift_downshift:
+		{
+			SPI_output_vector.solenoid_1 = ON;
+			SPI_output_vector.solenoid_2 = OFF;
+			
+			if(gas_shift_countdown > 0)
+			{
+				gas_shift_state = gas_shift_downshift;
+			} else {
+				gas_shift_state = gas_shift_timer_out;
+			}
+		}
+		break;
+		
+		
+		case gas_shift_timer_out:
+		{
+			SPI_output_vector.solenoid_1 = OFF;
+			SPI_output_vector.solenoid_2 = OFF;
+			
+			if(!input_vector.green_button & !input_vector.red_button){
+				gas_shift_state = gas_shift_off;
+			} else {
+				gas_shift_state = gas_shift_timer_out;
+		}
+		break;
+		}
+	} 
+	return 0;
+}
 int validShift(int target, int RPM)
 {
     float PR = 24./73; //primary reduction gear ratio
@@ -367,7 +460,7 @@ void test_shifter_algorithm (void) {
     t_dpressed = false;
     t_cpressed = false;
 
-
+#if 000
     /**********************************Neutral to Gear1 Testing**************************************/
     printf("Begin Test\n");
     printf("****************Neutral to Gear1 Up Shift Testing****************\n\r");
@@ -641,7 +734,7 @@ void test_shifter_algorithm (void) {
 	printf("Testing Complete\n\r");
 	
 	
-	
+	#endif
 
 }
 

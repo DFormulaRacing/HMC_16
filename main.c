@@ -436,7 +436,41 @@ bool init_status = 0; // init not completed
 void	_50_mSec_Tasks(void)
 {
 	// enum gear shifter(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed)
-	input_vector.c_gear = shifter(input_vector.c_gear, input_vector.motor_rpm,  input_vector.red_button, input_vector.green_button, clutch_threashold_passed); // create motor rpm input
+	switch(mode) {
+		case hybrid:
+		{
+			input_vector.c_gear = shifter_hybrid_mode(input_vector.c_gear, input_vector.motor_rpm, input_vector.green_button, input_vector.red_button, clutch_threashold_passed); // create motor rpm input
+		}
+		break;
+		
+		case gas:
+		{
+			input_vector.c_gear = shifter_gas_mode(input_vector.c_gear, input_vector.motor_rpm, input_vector.green_button, input_vector.red_button, clutch_threashold_passed); // create motor rpm input
+		}
+		break;
+		
+		case electric:
+		{
+			SPI_output_vector.solenoid_1 = OFF;
+		  SPI_output_vector.solenoid_2 = OFF;
+		}
+		break;
+		
+		case car_off:
+		{
+			SPI_output_vector.solenoid_1 = OFF;
+		  SPI_output_vector.solenoid_2 = OFF;
+		}
+		break;
+		
+		case init:
+		{
+			SPI_output_vector.solenoid_1 = OFF;
+		  SPI_output_vector.solenoid_2 = OFF;
+		}
+		break;
+	}
+	
 	// put nested state machine for mode
 	
 	if(init_status == 0){
