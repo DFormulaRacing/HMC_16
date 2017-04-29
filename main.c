@@ -21,104 +21,50 @@
 #include "HMC_state_machine.h"
 
 #include <RTE_components.h>
+#include "ring_buffer.h" // will need to change
+#include	"DFR_SPI.h"
+#include "dfrshifter.h"
+
 
 // a small helper... 
 #define	until(arg)	while(!(arg))
 #define ENABLE_CAN_INTERRUPTS (1)
 
-volatile	uint32_t	JLM_Debug	=	0;
 
 // Setting Up Message Table
 const uint32_t STD = CAN_Id_Standard;
 const uint32_t EXT = CAN_Id_Extended;
- uint32_t msgTableSize = 20;
+uint32_t msgTableSize;
 
-uint32_t shaun_debug;
-
-//#pragma pack
-
-enum HMC_states{
-	off,
-	start,
-	init,
-	brake,
-	clutch,
-	prop_torqe,
-}; 
-
-enum HMC_states state = off;
-float engine_torque;
-float motor_torque;
-float kP;
-
-// Structures for BAMOCAR data
-typedef struct Bamo_data_16_s{
-	uint8_t REGID; // change back to uint8_t
-	uint16_t data;
-} Bamo_data_16_t;
-
-/* typedef struct Bamo_data_32_s {
-	uint8_t REGID;
-	uint32_t data;
-} Bamo_data_32_t; */
-
-// union for CAN Data
-typedef union CAN_data_u {
-	uint64_t   _64;
-	uint8_t    _8[8];
-  uint16_t   _16[4];
-  uint32_t   _32[2];
-  float      _float[2];
-  double     _double;
-
-	Bamo_data_16_t Bamo_data_16;
-
-	//Bamo_data_32_t Bamo_data_32;
-
-} CAN_data_t;
-
-// create structure for message tble
-typedef struct CAN_msg_s {
-	uint32_t messageID;
-	uint32_t messageType;
-	uint32_t REGID;
- 	CAN_data_t data;
-	uint32_t update;
-	int row;
-	int col;
-	char name[10];
-	int msg_count;
-	int old_count;
-
-} CAN_msg_t;
-
-
-input_vector_t input_vector;
+//#pragma pack  
+volatile	uint32_t		JLM_Debug;
 
 const int column = 12;
-	// create message table
+// create message table
 volatile CAN_msg_t msgTable[] =
 {	
 	// PE3 messages
 	{0x0CFFF048, EXT, 0, 0, 1, 1, column, "PE3 1",0,0}, //PE3 1
 	{0x0CFFF148, EXT, 0, 0, 1, 2, column, "PE3 2",0,0}, //PE3 2
-	{0x0CFFF548, EXT, 0, 0, 1, 3, column, "PE3 6",0,0}, //PE3 6
-	{0x0CFFFB48, EXT, 0, 0, 1, 4, column, "PE3 12",0,0}, //PE3 12
-
+	{0x0cFFF248, EXT, 0, 0, 1, 3, column, "PE3 3",0,0}, //PE3 3
+	{0x0cFFF348, EXT, 0, 0, 1, 4, column, "PE3 3",0,0}, //PE3 4
+	{0x0CFFF548, EXT, 0, 0, 1, 5, column, "PE3 6",0,0}, //PE3 6
+	{0x0CFFFB48, EXT, 0, 0, 1, 6, column, "PE3 12",0,0}, //PE3 12
+ 
 	// Orion messages
-	{0x03B, STD, 0, 0, 1, 5, column, "BMS1",0,0}, // BMS 1
-	{0x3CB, STD, 0, 0, 1, 6, column, "BMS2",0,0}, // BMS 2
-	{0x6B2, STD, 0, 0, 1, 7, column, "BMS3",0,0}, // BMS 3
-	{0x623, STD, 0, 0, 1, 8, column, "BMS4",0,0}, // BMS 4
-	{0x190, STD, 0, 0, 1, 9, column, "BMS5",0,0}, // BMS 5
+	{0x03B, STD, 0, 0, 1, 7, column, "BMS1",0,0}, // BMS 1
+	{0x3CB, STD, 0, 0, 1, 8, column, "BMS2",0,0}, // BMS 2
+	{0x6B2, STD, 0, 0, 1, 9, column, "BMS3",0,0}, // BMS 3
+	{0x623, STD, 0, 0, 1, 10, column, "BMS4",0,0},// BMS 4
+	{0x195, STD, 0, 0, 1,11, column, "BMS5",0,0}, // BMS 5
 	//{0x00, STD, 0} // BMS 6
 
 	// BAMOCAR messages
-	{0x180, STD, 0x30, 0, 1,10, column, "BAMO1",0,0}, // BAMOCAR 1 - RPM
-	{0x180, STD, 0x20, 0, 1,11, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current
-	{0x180, STD, 0xA0, 0, 1,12, column, "BAMO3",0,0}, // BAMOCAR 3 - Motor Torque
-	{0x180, STD, 0x84, 0, 1,13, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Fault
-	{0x180, STD, 0x49, 0, 1,14, column, "BAMO5",0,0}, // BAMOCAR 5 - Motor Temp
+	{0x180, STD, 0x30, 0, 1,12, column, "BAMO1",0,0}, // BAMOCAR 1 - RPM
+	{0x180, STD, 0x20, 0, 1,13, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current // change to reg 27..?
+	{0x180, STD, 0xA0, 0, 1,14, column, "BAMO3",0,0}, // BAMOCAR 3 - Motor Torque
+	{0x180, STD, 0x84, 0, 1,15, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Fault
+	{0x180, STD, 0x49, 0, 1,16, column, "BAMO5",0,0}, // BAMOCAR 5 - Motor Temp
 
 	// NOTE: Bamocar transmits on ONE CAN message ID
 	// The REGID data field signifies what kind of
@@ -126,75 +72,21 @@ volatile CAN_msg_t msgTable[] =
 
 };
 
-// Ring Buffer Stuff
 
-const int BUFFER_SIZE = 100;
-CanRxMsg buffer[BUFFER_SIZE] = {0} ;
-volatile int readIdx = 0;
-volatile int writeIdx = 0;
-volatile int ringCounter = 0;
+output_vector_t output_vector[OUTPUT_VECTOR_SIZE] =
+{
+	{0,motor_torque_out,0,BAMOCAR_CAN_ID},
+	{0,glvs_shutdown,0,0},
+	{0,ready_to_drive,0,0},
+	{0,shift_up,0,0},
+	{0,shift_down,0,0},
+};
 
 
-void addToRing (CanRxMsg x) {
-	if(ringCounter >= BUFFER_SIZE) {
-		//while(1);
-		// BUFFER IS FULL!
-		printf("Buffer is full\n");
-		return;
-	}
-	
-	buffer[writeIdx] = x;
-	writeIdx++;
-	if (writeIdx >= BUFFER_SIZE){
-		writeIdx = 0;
-	}
-	ringCounter++;	
-}
 
-bool readFromRing (volatile CAN_msg_t *msgTable) {
-	if (ringCounter ==0) {
-		//printf("Buffer is empty\n");
-		return false;
-	}
+// int i = 0;
 
-	memcpy((void*)&msgTable->data, (void*)&buffer[readIdx].Data, sizeof(msgTable->data));
-			// msgTable[i].data = *((uint64_t *)&(My_RX_message.Data[0]));
-			// memcpy(&msgTable[i].data, &My_RX_message.Data[0], sizeof(msgTable[i].data));
-	msgTable->update = 1;
-	msgTable->msg_count++;
-//printf("%llu\n\r", msgTable->data);
-
-	ringCounter--;
-	if(ringCounter<0)
-	{
-		ringCounter=0;
-	}
-	else
-	{
-		// do nothing
-	}
-	
-	readIdx++;
-	if (readIdx >= BUFFER_SIZE)
-	{
-		readIdx = 0;
-	}
-
-	return true;
-}
-
-bool isEmpty () {
-	if (ringCounter == 0){
-		return true;
-	} 
-	else{
-		return false;
-	}
-}
-
-int i = 0;
-
-// CanRxMsg RxMessage; // HOW DO WE GET THE CAN MESSAGE TO FILL RxMessage????*****
+// CanRxMsg RxMessage;
 CanRxMsg ringBuffer[50];
 uint32_t readCount = 0;
 uint32_t writeCount = 0;
@@ -277,7 +169,7 @@ CanTxMsg	My_TX_message	=
 	0,								//  uint32_t StdId;  /*!< Specifies the standard identifier.
 										//                        This parameter can be a value between 0 to 0x7FF. */
 										//
-	0x0CFFF048,					//  uint32_t ExtId;  /*!< Specifies the extended identifier.
+	0x7E57,					//  uint32_t ExtId;  /*!< Specifies the extended identifier.
 										//                        This parameter can be a value between 0 to 0x1FFFFFFF. */
 										//
 	CAN_Id_Extended,	//  uint8_t IDE;     /*!< Specifies the type of identifier for the message that 
@@ -300,11 +192,12 @@ CanTxMsg	My_TX_message	=
 };
 
 CanRxMsg	My_RX_message;
-CanRxMsg *pointer_to_msg;
-
 volatile	bool	Print_Flag	=	false;
-
 volatile	int	My_Time = 0;
+input_vector_t input_vector;
+volatile SPI_output_vector_t SPI_output_vector;
+
+bool clutch_threashold_passed = PRESSED; // create implementation
 
 /*----------------------------------------------------------------------------
  * main: blink LED and check button state
@@ -318,32 +211,27 @@ volatile	int	My_Time = 0;
   Buttons_Initialize();
   stdout_init();                                           /* Initialize Serial interface */
   SysTick_Config(SystemCoreClock / 1000);                  /* SysTick 1 msec interrupts */
-	DFR_TIM3_Init();				//	Initialize TIM3 for a 1 mSec Interrupt  (TIM3 ISR)
 	DFR_CAN_Init(0xFFFF12);
+	DFR_SPI_Init();
+	DFR_TIM3_Init();				//	Initialize TIM3 for a 1 mSec Interrupt  (TIM3 ISR)
+	
+	// always start out in Neutral
+	input_vector.c_gear = Neutral;
 	 
+	// test_shifter_algorithm();
 	
 
+	int i = 0; 
   for (;;) {
-
-
-  input_vector.engine_rpm = msgTable[0].data._16[0];
-	 
-	input_vector.engine_MAP = msgTable[1].data._16[1];
-	
-	input_vector.engine_temp = msgTable[2].data._16[1];
-
-	//input_vector.motor_rpm = msgTable[9].data.Bamo_data_16.data; // change back
-	input_vector.motor_rpm = (uint16_t)(msgTable[9].data._8[1]+msgTable[9].data._8[2]*256); // change back
-	memcpy((void*)&input_vector.motor_rpm, (void*)&msgTable[9].data._8[1], sizeof(uint16_t));
-
-	input_vector.motor_torque_rdval = msgTable[11].data.Bamo_data_16.data;
-
+		
+		assign_inputs(); // update all values in input vector
+		
 		if(Print_Flag)		//	TIM3_IRQHandler() ISR sets Print_Flag, we clear it here...
 		{
 			Print_Flag	=	false;
 			My_Time	+=	5;						//	add another 5 seconds to My_Time
-			CAN_Transmit(CAN1, &My_TX_message);		//	Let's send a message...
-			JLM_Debug	=	CAN_TransmitStatus(CAN1, 0);
+			//CAN_Transmit(CAN1, &My_TX_message);		//	Let's send a message...
+			//JLM_Debug	=	CAN_TransmitStatus(CAN1, 0);
 		}
 		else
 		{
@@ -358,16 +246,12 @@ volatile	int	My_Time = 0;
 				// do nothing ring is empty
 			}
 			else 
-			{ 	
+			{ 
+				// parse the pending message in the buffer
 				bool done = false;
-				
-				// parse new message
-				
 				i = 0;
 				msgTableSize = (sizeof(msgTable)/sizeof(CAN_msg_t));
-				
 				while((done == false) && (i < msgTableSize)) {
-/* change back to 0x180*/
 					if( 
 						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType) && buffer[readIdx].StdId != 0x180) ||  // Regular
 						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].Data[0] == msgTable[i].REGID )) || // Bamocar
@@ -379,54 +263,10 @@ volatile	int	My_Time = 0;
 						i++; // increment
 					}
 				}  
-shaun_debug = 0x123;
-			}
-			#else
-			if(CAN_MessagePending(CAN1, CAN_FIFO0)	)
-			{ 	
-				bool done = false;
-				
-				CAN_Receive(CAN1, CAN_FIFO0, &My_RX_message);
-
-				My_TX_message.Data[0]++; // if we get a ring, we visually acknowledge it by incrementing
-
-				addToRing(My_RX_message);
-
-				CAN_FIFORelease(CAN1, CAN_FIFO0);
-				
-				
-				
-				// put message handling code here
-				
-				// parse new message
-				
-				i = 0;
-				msgTableSize = (sizeof(msgTable)/sizeof(CAN_msg_t));
-				
-				while((done == false) && (i < msgTableSize)) {
-/* change back to 0x180*/
-					if( 
-						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType) && buffer[readIdx].StdId != 0x180) ||  // Regular
-						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].Data[0] == msgTable[i].REGID )) || // Bamocar
-						((buffer[readIdx].ExtId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType)) // Extended
-					) {
-						readFromRing(&msgTable[i]); // Fill in DOUBLE CHECK*****
-						done = true;
-					} else {
-						i++; // increment
-					}
-				}  
-shaun_debug = 0x123;
-			}
-			else
-			{
-				//	...
-			}
-			#endif	// defined(ENABLE_CAN_INTERRUPTS)
-			
-		}
+			}	
+			#endif
+		}	
   }
-
 }
 
 
@@ -475,9 +315,10 @@ void DFR_TIM3_Init(void)
 }
 
 
-void	XX_mSec_Tasks(void);
+void	_50_mSec_Tasks(void);
 
 uint16_t	Print_Counter	=	10;
+uint16_t _50_msec_counter = 50-1;
 
 void updateTerminal(void);
 
@@ -507,9 +348,26 @@ void updateTerminal(void){
 	printf("\033[%d;%dH %s",18,c,"Motor RPM");
 	printf("\033[%d;%dH %d", 18, 15, input_vector.motor_rpm);
 	
-	printf("\033[%d;%dH %s",19,c,"Motor RPM REGID"); // change back to Motor Torque
+	printf("\033[%d;%dH %s",19,c,"Motor Torque"); // change back to Motor Torque
 	printf("\033[%d;%dH %d", 19, 15,input_vector.motor_torque_rdval); //msgTable[9].data.Bamo_data_16.REGID
 	
+	printf("\033[%d;%dH %s",20,c,"Accel. Pos.");
+	printf("\033[%d;%dH %03d", 20, 15,input_vector.accel_rdval);
+	
+	printf("\033[%d;%dH %s",21,c,"Brake Pos.");
+	printf("\033[%d;%dH %d", 20, 15,input_vector.brake_rdval);
+	
+	printf("\033[%d;%dH %s",22,c,"Clutch Pos.");
+	printf("\033[%d;%dH %d", 20, 15,input_vector.clutch_rdval);
+
+// print statement for mode
+//	if (input_vector.mode_switch == 1){
+//		printf("\033[%d;%dH %s",23,c,"Hybrid Mode");
+//	}
+//	else{
+//		printf("\033[%d;%dH %s",23,c,"Electric Only Mode");
+//	}
+		
 }
 
 
@@ -517,16 +375,20 @@ void TIM3_IRQHandler(void)
 {
 	// Clear the interrupt pending flag
   TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
-	
-	if(Print_Counter)
+
+	GPIO_ResetBits(GPIOC, GPIO_Pin_7);		//	SPI_CS1	PC7	CLT01-38SQ7
+	SPI_I2S_SendData(SPI1, CLT_Write);
+	SPI_io_state = wait_for_SPI_A;
+		
+	if(_50_msec_counter)
 	{
-		Print_Counter--;
+		_50_msec_counter--;
 	}
 	else
 	{
-		Print_Counter	=	10;
+		_50_msec_counter	=	50-1;
 		Print_Flag	=	true;
-		XX_mSec_Tasks();
+		_50_mSec_Tasks();
 	}
 }
 
@@ -562,49 +424,109 @@ void msg_safety_chk(void){
 
 volatile	uint16_t	State	=	0;
 
-void	XX_mSec_Tasks(void)
+float engine_torque;
+float motor_torque;
+float kP;
+enum HMC_states hmc_state;
+extern car_mode_t mode;
+int brake_threshold = 100;
+int clutch_threshold = 100;
+bool init_status = 0; // init not completed
+
+void	_50_mSec_Tasks(void)
 {
-	if(State	==	0)
-	{
-		State	=	1;
-		LED_On(0);
+	// enum gear shifter(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed)
+	input_vector.c_gear = shifter(input_vector.c_gear, input_vector.motor_rpm,  input_vector.red_button, input_vector.green_button, clutch_threashold_passed); // create motor rpm input
+	// put nested state machine for mode
+	
+	if(init_status == 0){
+		init_status = bamocar_init();
+	} else {
+		init_status = 1;
+	};
+	
+	void lock_unlock_state(void);
+	
+	switch(hmc_state){
+		case (brake):
+			if (input_vector.clutch_rdval >= clutch_threshold) {
+				hmc_state = clutch;
+			}
+			else if (input_vector.brake_rdval < brake_threshold && input_vector.clutch_rdval < clutch_threshold){
+				hmc_state = prop_torque;
+			} else {
+				// stay in brake
+			}
+			break;
+		case (clutch):
+			if (input_vector.brake_rdval >= brake_threshold) {
+				hmc_state = clutch;
+			}
+			else if (input_vector.brake_rdval < brake_threshold && input_vector.clutch_rdval < clutch_threshold){
+				hmc_state = prop_torque;
+			} else {
+				// stay in brake
+			}
+			break;
+		case (prop_torque):
+			if (input_vector.brake_rdval >= brake_threshold || input_vector.clutch_rdval >= clutch_threshold){
+				hmc_state = clutch;
+			} else {
+				// stay in prop_torque
+			}
+			break;
+		
 	}
-	else
-	{
-		State	=	0;
-		LED_Off(0);
-	}
 	
-	//updateTerminal();
-	//msg_safety_chk();
-	
-	state = prop_torqe; // need to figure out how we will change states
-	
-	switch(state){
-		case off:
-			kP = 0;
-			break;
-		case start:
-			kP = 0;
-			break;
-		case init:
-			kP = 0;
-			break;
-		case brake:
-			kP = 0;
-			break;
-		case clutch:
-			kP = 0;
-			break;
-		case prop_torqe:
- 			kP = desired_kP();
-			engine_torque = get_engine_torque(); 
-			motor_torque = kP*engine_torque;
+	// nested state machine
+	// first check what mode the car is in (hybrid, electric, or gas)
+	// when in hybrid execture another state machine
+	//		
+	switch (mode){
+		case(hybrid):
+			switch(hmc_state){
+				case brake:
+					kP = 0;
+					break;
+				case clutch:
+					kP = 0;
+					break;
+				case prop_torque:
+					kP = desired_kP();
+					engine_torque = get_engine_torque(); 
+					motor_torque = kP*engine_torque;
+					torque_command(motor_torque);
+					break;
+			}
+		case(electric):
+			// do we need init here, i think so...
+			motor_torque = electric_torque(); // change to function based on TPS
 			torque_command(motor_torque);
 			break;
+		
+		case (gas):
+			kP = 0;
+			torque_command(kP);
+			break;
+		
+		case(car_off):
+			kP = 0;
+			torque_command(kP);
+			break;
+		
+		case(init):
+			kP = 0;
+			torque_command(kP);
+			break;
+			
 	}
+	
+	// updateTerminal();
+	// msg_safety_chk(); put back
+	// send_output_msg(output_vector);
+	
+	
 }
-
 
 
 void ConfigureGPIO(GPIO_TypeDef* GPIOx, uint32_t GPIO_Pin, GPIOMode_TypeDef GPIO_Mode, GPIOSpeed_TypeDef GPIO_Speed, GPIOOType_TypeDef GPIO_OType, GPIOPuPd_TypeDef GPIO_PuPd)
@@ -624,18 +546,11 @@ void DFR_CAN_Init(uint32_t u32SensorID)
 {
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 	
-ConfigureGPIO(GPIOB, GPIO_Pin_8, GPIO_Mode_AF, GPIO_Speed_2MHz, GPIO_OType_OD, GPIO_PuPd_UP); //  PB8   Pin 61  CAN_RX/SER_RXD  Input
-ConfigureGPIO(GPIOB, GPIO_Pin_9, GPIO_Mode_AF, GPIO_Speed_2MHz, GPIO_OType_PP, GPIO_PuPd_NOPULL); //  PB9   Pin 62  CAN_TX/SER_TXD  Output
-
-
+	ConfigureGPIO(GPIOB, GPIO_Pin_8, GPIO_Mode_AF, GPIO_Speed_2MHz, GPIO_OType_OD, GPIO_PuPd_UP); //  PB8   Pin 61  CAN_RX/SER_RXD  Input
+	ConfigureGPIO(GPIOB, GPIO_Pin_9, GPIO_Mode_AF, GPIO_Speed_2MHz, GPIO_OType_PP, GPIO_PuPd_NOPULL); //  PB9   Pin 62  CAN_TX/SER_TXD  Output
 	
-#if		000
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource11, GPIO_AF_CAN1);		//  PA11   Pin ??  CAN_RX  Input	
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource12, GPIO_AF_CAN1);		//  PA12   Pin ??  CAN_TX  Output
-#else
 	GPIO_PinAFConfig(GPIOB, GPIO_PinSource8, GPIO_AF_CAN1);		//  PB8   Pin 61  CAN_RX  Input	
 	GPIO_PinAFConfig(GPIOB, GPIO_PinSource9, GPIO_AF_CAN1);		//  PB9   Pin 62  CAN_TX  Output
-#endif
 
 	/* CAN register init */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3 | RCC_APB1Periph_CAN1, ENABLE);
@@ -651,11 +566,11 @@ ConfigureGPIO(GPIOB, GPIO_Pin_9, GPIO_Mode_AF, GPIO_Speed_2MHz, GPIO_OType_PP, G
 	{
 		CAN_FilterInitTypeDef CAN_FilterInitStructure;
 
-JLM_Debug	=	u32SensorID;
+// JLM_Debug	=	u32SensorID;
 
 		// Prepare the extended ID for the filters list
 		u32SensorID = ((u32SensorID<<3) | CAN_Id_Extended);	//CAN_ID_EXT;
-JLM_Debug	=	u32SensorID;
+// JLM_Debug	=	u32SensorID;
 
 #if		001
 		CAN_FilterInitStructure.CAN_FilterNumber	=	0;		//	Filter  0 is the default for CAN1
@@ -664,10 +579,9 @@ JLM_Debug	=	u32SensorID;
 
 		CAN_FilterInitStructure.CAN_FilterIdHigh	=	0;	//((u32SensorID & 0xffff0000)>>16);
 		CAN_FilterInitStructure.CAN_FilterIdLow		= 0;	// (u32SensorID & 0x0000ffff);
-			CAN_FilterInitStructure.CAN_FilterMaskIdHigh	=	0;	//CAN_FilterInitStructure.CAN_FilterIdHigh;
-			CAN_FilterInitStructure.CAN_FilterMaskIdLow		=	0;	//CAN_FilterInitStructure.CAN_FilterIdLow;
+		CAN_FilterInitStructure.CAN_FilterMaskIdHigh	=	0;	//CAN_FilterInitStructure.CAN_FilterIdHigh;
+		CAN_FilterInitStructure.CAN_FilterMaskIdLow		=	0;	//CAN_FilterInitStructure.CAN_FilterIdLow;
 #else
-		
 		//	NOTE:	Note: CAN 2 start filter bank number n is configurable by writing to
 		//				the CAN2SB[5:0] bits in the CAN_FMR register.
 		
@@ -720,12 +634,12 @@ JLM_Debug	=	u32SensorID;
 
 // #define		CAN_LOOP_BACK_MODE	(1)
 
-#if		defined(CAN_LOOP_BACK_MODE)		
+	#if		defined(CAN_LOOP_BACK_MODE)		
 		CAN_InitStructure.CAN_Mode			=	CAN_Mode_LoopBack;
-#else
+	#else
 		CAN_InitStructure.CAN_Mode			=	CAN_Mode_Normal;
-#endif
-#if 000
+	#endif
+	#if 000
 		//============
 		//	250 Kbaud
 		//============
@@ -737,7 +651,7 @@ JLM_Debug	=	u32SensorID;
 		CAN_InitStructure.CAN_BS1				=	CAN_BS1_7tq;		//	consider CAN_BS1_12tq
 		CAN_InitStructure.CAN_BS2				=	CAN_BS2_2tq;		//	consider CAN_BS2_3tq, for 81.25% Sampling point  [(CAN_BS1_12tq+CAN_SJW_1tq)/(CAN_BS1_12tq+CAN_BS2_1tq+CAN_SJW_3tq)]
 		CAN_InitStructure.CAN_Prescaler	=	18;     // 250 Kbaud
-#else	
+	#else	
 		//============
 		//	500 Kbaud
 		//============
@@ -749,7 +663,7 @@ JLM_Debug	=	u32SensorID;
 		CAN_InitStructure.CAN_BS1				=	CAN_BS1_7tq;		//	consider CAN_BS1_12tq
 		CAN_InitStructure.CAN_BS2				=	CAN_BS2_2tq;		//	consider CAN_BS2_3tq, for 81.25% Sampling point  [(CAN_BS1_12tq+CAN_SJW_1tq)/(CAN_BS1_12tq+CAN_BS2_1tq+CAN_SJW_3tq)]
 		CAN_InitStructure.CAN_Prescaler	=	9;     // 500 Kbaud
-#endif
+	#endif
 	#if		defined(USE_CAN2)
 		CAN_Init(CAN2,	&CAN_InitStructure);
 	#else
@@ -765,7 +679,7 @@ JLM_Debug	=	u32SensorID;
    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 5;
    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-   // NVIC_Init(&NVIC_InitStructure); // bring it back later
+    NVIC_Init(&NVIC_InitStructure);
    // CAN RX Interrupt Handling
    NVIC_InitStructure.NVIC_IRQChannel = CAN1_RX0_IRQn; //USB_LP_CAN_RX0_IRQChannel;
    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;
@@ -774,9 +688,9 @@ JLM_Debug	=	u32SensorID;
    NVIC_Init(&NVIC_InitStructure);
   }
 			
-		CAN_ITConfig(CAN1, CAN_IT_TME, ENABLE);
-		
-		
+//		CAN_ITConfig(CAN1, CAN_IT_TME, ENABLE);
+		CAN_ITConfig(CAN1, (CAN_IT_FMP0 | CAN_IT_FF0 | CAN_IT_TME), ENABLE);
+
 		#endif
 	#endif
 	}
@@ -817,7 +731,20 @@ void CAN1_TX_IRQHandler(void)
 //   // ...Q is empty, nothing more to send...wait for another transmission...
 //  }
 // }
- CAN_ClearITPendingBit(CAN1, CAN_IT_TME);
+
+	if(send_from_output_buff (output_ring_buff))
+	{
+		// output buff not empty
+		// we sent a message
+		flag_can_busy = true;
+	}
+	else {
+		// buffer is empty
+		// nothing to send
+		flag_can_busy = false;
+	}
+	CAN_ClearITPendingBit(CAN1, CAN_IT_TME);
+		
 }
 
 void CAN1_RX0_IRQHandler(void)

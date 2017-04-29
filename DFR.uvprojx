@@ -482,6 +482,11 @@
               <FileType>1</FileType>
               <FilePath>.\misc.c</FilePath>
             </File>
+            <File>
+              <FileName>stm32f4xx_spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\stm32f4xx_spi.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -672,6 +677,31 @@
               <FileName>HMC_state_machine.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\HMC_state_machine.h</FilePath>
+            </File>
+            <File>
+              <FileName>RTE_Components.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\RTE\_STM32F446xx\RTE_Components.h</FilePath>
+            </File>
+            <File>
+              <FileName>ring_buffer.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\ring_buffer.h</FilePath>
+            </File>
+            <File>
+              <FileName>ring_buffer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ring_buffer.c</FilePath>
+            </File>
+            <File>
+              <FileName>DFR_SPI.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\DFR_SPI.c</FilePath>
+            </File>
+            <File>
+              <FileName>dfrshifter.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\dfrshifter.c</FilePath>
             </File>
           </Files>
         </Group>
