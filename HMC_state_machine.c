@@ -137,20 +137,22 @@ float get_engine_torque(void){
 
 extern volatile CanTxMsg bamocar_msg;
 
+
 void torque_command(float motor_torque)
 {
-	current_output = (uint16_t)(motor_torque/kT)*(count/max_current);
+	current_output	=	(uint16_t)(motor_torque/kT)*(count/max_current);	
 	
-	memcpy((void*)&bamocar_msg.Data[1], (void*)&current_output, sizeof(uint16_t));
+	bamocar_msg.Data[1]	=	 (current_output & 0x00FF);
+	bamocar_msg.Data[2]	=	((current_output & 0xFF00)>>8);
 	
 	add_to_output_ring(bamocar_msg);
 	
-	/*craft CAN message to output to torqeu */
+	/*craft CAN message to output to torque */
 	/* don't forget that the Unitek uses counts instead of torque */
 
 }
 
-car_mode_t mode = car_off; // make external?
+volatile car_mode_t mode = car_off; // make external?
 car_mode_t old_mode;
 
 
@@ -163,12 +165,14 @@ lock_unlock_t	lock_state = LU_UNLOCK;
 
 uint8_t push_button_2_z1 = 0;
 
+extern volatile int ready_to_drive_flag;
+
 void lock_unlock_state(void){
 	
 	switch(lock_state){
 		case (LU_UNLOCK):
 		{
-			mode = (car_mode_t)((input_vector.motor_mode << 1 ) |  input_vector.ice_mode + (~ready_to_drive_flag));
+			mode = (car_mode_t)((input_vector.motor_mode << 1 ) |  input_vector.ice_mode + (~ready_to_drive_flag)); // Double check with John to see if this makes sense
 			if(input_vector.push_button_2 & ~push_button_2_z1) // detect rising edge
 			{
 				lock_state = LU_LOCK;
@@ -254,17 +258,22 @@ void assign_inputs(void){
 		// ------ BAMOCAR inputs ------
 		// Have to use memcpy() because it's 16bit data in an 8bit address
 		// find conversion rates
+		
 		// motor rpm
 	memcpy((void*)&input_vector.motor_rpm, (void*)&msgTable[11].data._8[1], sizeof(uint16_t));
 		// motor current
 	memcpy((void*)&input_vector.motor_current, (void*)&msgTable[12].data._8[1], sizeof(uint16_t));
 		// motor torque read value
 	memcpy((void*)&input_vector.motor_torque_rdval, (void*)&msgTable[13].data._8[1], sizeof(uint16_t));
-		// motor fault
-	memcpy((void*)&input_vector.motor_fault, (void*)&msgTable[14].data._8[1], sizeof(uint16_t));
+		// motor voltage
+	memcpy((void*)&input_vector.motor_voltage, (void*)&msgTable[14].data._8[1], sizeof(uint16_t));
 		// motor temperature
 	memcpy((void*)&input_vector.motor_temp, (void*)&msgTable[15].data._8[1], sizeof(uint16_t));
-		
+		// motor fault
+	memcpy((void*)&input_vector.bamocar_fault, (void*)&msgTable[16].data._8[1], sizeof(uint16_t));
+		// bamoar bus voltage
+	memcpy((void*)&input_vector.bamocar_bus_voltage, (void*)&msgTable[17].data._8[1], sizeof(uint16_t));
+	
 	
 	// End of input assignments
 	

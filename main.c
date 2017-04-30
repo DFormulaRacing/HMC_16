@@ -24,6 +24,7 @@
 #include "ring_buffer.h" // will need to change
 #include	"DFR_SPI.h"
 #include "dfrshifter.h"
+#include "safety.h"
 
 
 // a small helper... 
@@ -61,10 +62,12 @@ volatile CAN_msg_t msgTable[] =
 
 	// BAMOCAR messages
 	{0x180, STD, 0x30, 0, 1,12, column, "BAMO1",0,0}, // BAMOCAR 1 - RPM
-	{0x180, STD, 0x20, 0, 1,13, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current // change to reg 27..?
+	{0x180, STD, 0x5F, 0, 1,13, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current // change to reg 27..?
 	{0x180, STD, 0xA0, 0, 1,14, column, "BAMO3",0,0}, // BAMOCAR 3 - Motor Torque
-	{0x180, STD, 0x84, 0, 1,15, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Fault
+	{0x180, STD, 0x8A, 0, 1,15, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Voltage
 	{0x180, STD, 0x49, 0, 1,16, column, "BAMO5",0,0}, // BAMOCAR 5 - Motor Temp
+	{0x180, STD, 0x8F, 0, 1,17, column, "BAMO5",0,0}, // BAMOCAR 6 - BAMOCAR_Fault
+	{0x180, STD, 0xEB, 0, 1,18, column, "BAMO5",0,0}, // BAMOCAR 7 - BAMOCAR Bus Voltage
 
 	// NOTE: Bamocar transmits on ONE CAN message ID
 	// The REGID data field signifies what kind of
@@ -73,14 +76,14 @@ volatile CAN_msg_t msgTable[] =
 };
 
 
-output_vector_t output_vector[OUTPUT_VECTOR_SIZE] =
+/* output_vector_t output_vector[OUTPUT_VECTOR_SIZE] =
 {
 	{0,motor_torque_out,0,BAMOCAR_CAN_ID},
 	{0,glvs_shutdown,0,0},
 	{0,ready_to_drive,0,0},
 	{0,shift_up,0,0},
 	{0,shift_down,0,0},
-};
+}; */
 
 
 
@@ -198,6 +201,7 @@ input_vector_t input_vector;
 volatile SPI_output_vector_t SPI_output_vector;
 
 bool clutch_threashold_passed = PRESSED; // create implementation
+bool safety_init_done_flag = false;
 
 /*----------------------------------------------------------------------------
  * main: blink LED and check button state
@@ -219,8 +223,8 @@ bool clutch_threashold_passed = PRESSED; // create implementation
 	input_vector.c_gear = Neutral;
 	 
 	// test_shifter_algorithm();
+	 safety_init_done_flag = true;
 	
-
 	int i = 0; 
   for (;;) {
 		
@@ -395,30 +399,45 @@ void TIM3_IRQHandler(void)
 
 void msg_safety_chk (void);
 
+bool init_status = 0; // bamocar init not completed
+volatile int CAN_error_flag = OFF;
 void msg_safety_chk(void){
 
 	int n;
 	int msg_error_count[msgTableSize-1];
+	int missed_message = false;
 
 	for (n = 0; n < msgTableSize; n++){
+		if(n < 6)
+		{
+			// do nothing because BAMOCAR IS NOT PRESENT
+			// HACK!!!
+		}
+		else
 		if(msgTable[n].msg_count == msgTable[n].old_count)
 		{
 			msg_error_count[n]++;
+			
 		}
-		else //if(msgTable[n].msg_count != msgTable[n].old_count)
+		else //if(msgTable[n].msg_count != msgTable[n].old_c ount)
 		{
 			msg_error_count[n] = 0;
 			msgTable[n].old_count = msgTable[n].msg_count;
+			init_status = 1;
+			missed_message = true;
 			// request msg function here
 		}
 
 		if(msg_error_count[n] == 20)
 		{
 			printf("\033[%d;%dH Crit. Msg Error for %s, shut down",15,25, msgTable[n].name );
+			CAN_error_flag = ON;
 			// shutdown function
 		}
 	
 	}
+	
+	CAN_error_flag = missed_message;
 }
 
 
@@ -428,10 +447,10 @@ float engine_torque;
 float motor_torque;
 float kP;
 enum HMC_states hmc_state;
-extern car_mode_t mode;
+extern volatile car_mode_t mode;
 int brake_threshold = 100;
 int clutch_threshold = 100;
-bool init_status = 0; // init not completed
+
 
 void	_50_mSec_Tasks(void)
 {
@@ -555,9 +574,9 @@ void	_50_mSec_Tasks(void)
 			
 	}
 	
-	// updateTerminal();
-	// msg_safety_chk(); put back
-	// send_output_msg(output_vector);
+	 updateTerminal();
+	 msg_safety_chk();
+	 // send_output_msg(output_vector);
 	
 	
 }

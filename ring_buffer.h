@@ -31,7 +31,7 @@ extern volatile bool flag_can_busy;
 extern volatile CanTxMsg bamocar_msg;
 extern volatile CanTxMsg output_ring_buff[OUTPUT_RING_SIZE];
 
-typedef enum output_s {
+/* ypedef enum output_s {
 	motor_torque_out,
 	glvs_shutdown,
 	ready_to_drive,
@@ -47,7 +47,7 @@ volatile typedef struct output_vector_s{
 	uint32_t update;
 	uint32_t CANID;
 	
-} output_vector_t;
+} output_vector_t; */
 
 
 // input ring buff stuff
@@ -56,8 +56,8 @@ bool readFromRing (volatile CAN_msg_t *msgTable);
 bool isEmpty (void);
 
 // output stuff
-void send_output_msg(output_vector_t output_vector[]);
-void update_output_vector(uint16_t data, output_t select);
+// void send_output_msg(output_vector_t output_vector[]);
+// void update_output_vector(uint16_t data, output_t select);
 void add_to_output_ring (CanTxMsg x);
 bool send_from_output_buff (volatile CanTxMsg output_ring_buff[]);
 

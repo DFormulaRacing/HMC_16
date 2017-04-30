@@ -127,8 +127,11 @@ volatile typedef struct input_vector_s {
 	uint16_t	motor_rpm;
 	uint16_t	motor_current;
 	uint16_t	motor_torque_rdval;
-	uint16_t	motor_fault;
+	uint16_t 	motor_voltage;
 	uint16_t	motor_temp;
+	uint16_t	bamocar_fault;
+	uint16_t	bamocar_bus_voltage;
+	
 
 	// ------ Shifter algorithm inputs -----
 	enum gear c_gear; // Current Gear Position
@@ -141,7 +144,6 @@ volatile typedef struct input_vector_s {
 	uint8_t green_button; // upshift button
 	uint8_t ice_mode;
 	uint8_t motor_mode;
-	uint8_t lock_state;
 	uint8_t push_button_1;
 	uint8_t push_button_2;
 	
@@ -152,6 +154,7 @@ volatile typedef struct input_vector_s {
 } input_vector_t;
 
 extern volatile input_vector_t input_vector;
+extern volatile car_mode_t mode;
 
 bool bamocar_init (void);
 
@@ -161,7 +164,7 @@ volatile typedef struct SPI_output_vector_s{
 	uint8_t solenoid_2; // upshift solenoid -- linked to green button
 	uint8_t safety;
 	uint8_t ready_to_drive;
-	uint8_t rfg_rfe;
+	uint8_t rfg;
 	
 }SPI_output_vector_t;
 
