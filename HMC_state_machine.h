@@ -32,7 +32,7 @@ enum HMC_states{
  */
 float desired_kP(void);
 float electric_torque(void);
-int get_gear(void);
+//int get_gear(void);
 float get_engine_torque(void);
 void torque_command(float motor_torque);
 enum gear shifter_gas_mode(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed);
@@ -82,8 +82,14 @@ volatile typedef struct input_vector_s {
 	uint16_t	engine_temp;
 	
 	uint16_t	brake_rdval;
+	
 	uint16_t	clutch_rdval;
+	uint16_t	clutch_pot1;
+	uint16_t	clutch_pot2;
+	
 	uint16_t	accel_rdval;
+	uint16_t 	accel_pot1;
+	uint16_t	accel_pot2;
 	
 	// ------- BMS inputs -------
 	
@@ -131,10 +137,12 @@ volatile typedef struct input_vector_s {
 	uint16_t	motor_temp;
 	uint16_t	bamocar_fault;
 	uint16_t	bamocar_bus_voltage;
+	uint16_t	bamocar_dout_1;
 	
 
 	// ------ Shifter algorithm inputs -----
 	enum gear c_gear; // Current Gear Position
+	
 
 	// ------ SPI inputs --------
 	enum shifter_io usher_shift; // Up Shift (John said to give it a chill name)
@@ -145,7 +153,7 @@ volatile typedef struct input_vector_s {
 	uint8_t ice_mode;
 	uint8_t motor_mode;
 	uint8_t push_button_1;
-	uint8_t push_button_2;
+	uint8_t push_button_2; // link to GO BUTTON!
 	
 	// probably don't need 'mode_switch' but keep for now so code compiles
 	uint8_t mode_switch; // talk to Jake/John about switches

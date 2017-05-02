@@ -12,7 +12,8 @@ typedef enum safety_states_e{
 	safety_one,		// before AIRs engaged
 	safety_gas,
 	safety_two,		// after AIRs engaged
-	safety_three,	// after ready to drive sound is done
+	safety_three,
+	safety_four,// after ready to drive sound is done
 	safety_fault,
 
 

@@ -336,22 +336,37 @@
         <Ww>
           <count>36</count>
           <WinNumber>1</WinNumber>
-          <ItemText>all_zeroes.word</ItemText>
+          <ItemText>mode</ItemText>
         </Ww>
         <Ww>
           <count>37</count>
           <WinNumber>1</WinNumber>
-          <ItemText>all_ones.word &amp; all_zeroes.word</ItemText>
+          <ItemText>safety_state</ItemText>
         </Ww>
         <Ww>
           <count>38</count>
           <WinNumber>1</WinNumber>
-          <ItemText>all_ones.word &amp; all_zeroes.word</ItemText>
+          <ItemText>SPI_output_vector.safety</ItemText>
         </Ww>
         <Ww>
           <count>39</count>
           <WinNumber>1</WinNumber>
-          <ItemText>(~all_zeroes.word)&amp; debounced_data.word</ItemText>
+          <ItemText>SPI_output_vector</ItemText>
+        </Ww>
+        <Ww>
+          <count>40</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>VNI_Read</ItemText>
+        </Ww>
+        <Ww>
+          <count>41</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>\\DFR\DFR_SPI.c\VNI_Read</ItemText>
+        </Ww>
+        <Ww>
+          <count>42</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>\\DFR\DFR_SPI.c\VNI_Read</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>

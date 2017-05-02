@@ -14,7 +14,7 @@
 
 // input ring variables
 
-#define BUFFER_SIZE 100
+#define BUFFER_SIZE 3200
 extern CanRxMsg buffer[BUFFER_SIZE];
 extern volatile int readIdx;
 extern volatile int writeIdx;
@@ -23,7 +23,7 @@ extern volatile int ringCounter;
 // output ring variables
 
 #define BAMOCAR_CAN_ID 0x180
-#define OUTPUT_RING_SIZE 10
+#define OUTPUT_RING_SIZE 100
 extern volatile int out_read_idx;
 extern volatile int out_write_idx;
 extern volatile int out_ring_count;
@@ -31,7 +31,7 @@ extern volatile bool flag_can_busy;
 extern volatile CanTxMsg bamocar_msg;
 extern volatile CanTxMsg output_ring_buff[OUTPUT_RING_SIZE];
 
-/* ypedef enum output_s {
+/* typedef enum output_s {
 	motor_torque_out,
 	glvs_shutdown,
 	ready_to_drive,

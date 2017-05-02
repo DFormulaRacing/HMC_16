@@ -43,8 +43,9 @@ volatile CanTxMsg output_ring_buff[OUTPUT_RING_SIZE]; // will need to make outpu
 #define MOTOR_TEMP_REGID 0x49
 #define BAMOCAR_FAULT_REGID 0x8F
 #define BAMOCAR_BUS_VOLTAGE_REGID 0xFB
+#define BAMOCAR_D_OUT_1_REGID 0xE0
 
-#define	INIT_MESSAGE_COUNT 7
+#define	INIT_MESSAGE_COUNT 8
 CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] = 
 {
 	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						1
@@ -103,7 +104,16 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 												//  uint8_t Data[8];
 			{BAMO_READ_REGID, BAMOCAR_BUS_VOLTAGE_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
+	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						7
+			0,								//  uint32_t ExtId; 
+			CAN_Id_Standard,	//  uint8_t IDE; 											
+			CAN_RTR_Data,			//  uint8_t RTR;
+			8,								//  uint8_t DLC;
+												//  uint8_t Data[8];
+			{BAMO_READ_REGID, BAMOCAR_D_OUT_1_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
 };
+
 
 
 
@@ -112,7 +122,8 @@ void addToRing (CanRxMsg x) {
 	if(ringCounter >= BUFFER_SIZE) {
 		//while(1);
 		// BUFFER IS FULL!
-		printf("Buffer is full\n");
+		// printf("Input Buffer is full\n");
+		printf("\033[%d;%dH %s",31,1,"Input CAN Buffer is full\n\r");
 		return;
 	}
 	
@@ -168,7 +179,7 @@ bool isEmpty (void) {
 // OUTPUT + OUTPUT RINGBUFF STUFF
 volatile CanTxMsg bamocar_msg = 
 	{
-	0x180,								//  uint32_t StdId;  /*!< Specifies the standard identifier.
+	0x210,								//  uint32_t StdId;  /*!< Specifies the standard identifier.
 										//                        This parameter can be a value between 0 to 0x7FF. */
 										//
 	0,					//  uint32_t ExtId;  /*!< Specifies the extended identifier.
@@ -289,10 +300,10 @@ bool send_from_output_buff (volatile CanTxMsg output_ring_buff[]) {
 }
 
 void add_to_output_ring (CanTxMsg x) {
-	if(ringCounter >= OUTPUT_RING_SIZE) {
+	if(out_ring_count >= OUTPUT_RING_SIZE) {
 		//while(1);
 		// BUFFER IS FULL!
-		printf("output Buffer is full\n");
+		printf("\033[%d;%dH %s",30,1,"output CAN Buffer is full\n\r");
 		return;
 	}
 	
@@ -326,7 +337,6 @@ bool bamocar_init(void){
 		return true; // done
 		
 	}
-	
 }
 
 

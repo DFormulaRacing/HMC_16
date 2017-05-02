@@ -745,7 +745,8 @@ void	Set_SPI_Outputs(volatile	VNI_Write_u_t	*WriteValue)
 
 //	WriteValue.bit.IN1	=	OFF;  test mechanism to force an output
 // WriteValue->bit.IN2	=	ON;
-//	WriteValue.bit.IN3	=	OFF;
+	WriteValue->bit.IN3	=	ON; // PUT THIS HIGH FOR DEBUGGING -- SOLVED: POWER ISSUE FROM BATTERY
+														// set high for electrical pre-inspection
 //	WriteValue.bit.IN4	=	OFF;
 //	WriteValue.bit.IN5	=	OFF;
 //	WriteValue.bit.IN6	=	OFF;
@@ -795,11 +796,6 @@ void GLVS_disable(void){
 	SPI_output_vector.safety = OFF;
 }
 
-
-
-
-
-
 void	SPI1_IRQHandler(void)
 {
 	switch(SPI_io_state){
@@ -825,7 +821,6 @@ void	SPI1_IRQHandler(void)
 			input_vector.push_button_1 = CLT_Read.bit.IN5;
 			input_vector.push_button_2 = CLT_Read.bit.IN6;
 			
-			
 		
 			//	Turn something on
 			{
@@ -840,6 +835,16 @@ void	SPI1_IRQHandler(void)
 				VNI_Write.bit.IN8	=	OFF;
 				Set_SPI_Outputs(&VNI_Write);
 			}
+			
+			if(VNI_Write.bit.IN3)
+			{
+			}
+			else
+			{
+				JLM_Debug = VNI_Write.bit.IN3;
+				JLM_Debug++;
+			}
+			
 			
 			SPI_I2S_SendData(SPI1, VNI_Write.word);
 			SPI_io_state = wait_for_SPI_B;
