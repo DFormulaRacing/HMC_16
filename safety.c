@@ -92,7 +92,6 @@ bool pedal_safety_check(void)
 	}
 	
 	
-	
 	return true;
 }
 

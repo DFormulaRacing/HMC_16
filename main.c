@@ -203,13 +203,14 @@ volatile SPI_output_vector_t SPI_output_vector;
 
 bool clutch_threashold_passed = NOT_PRESSED; // create implementation
 bool safety_init_done_flag = false;
+extern volatile safety_states_t safety_state;
 
 /*----------------------------------------------------------------------------
  * main: blink LED and check button state
  *----------------------------------------------------------------------------*/
  int main (void) {
   int32_t max_num = LED_GetCount();
-
+	
 	//SystemCoreClockConfigure();                              /* configure HSI as System Clock */
   SystemCoreClockUpdate();
   LED_Initialize();
@@ -221,7 +222,8 @@ bool safety_init_done_flag = false;
 	DFR_TIM3_Init();				//	Initialize TIM3 for a 1 mSec Interrupt  (TIM3 ISR)
 	
 	 
-	test_shifter_algorithm();
+	// test_shifter_algorithm();
+	
 	safety_init_done_flag = true; // also used for lock algorithm to sense when done initializing
 	 
 	input_vector.c_gear = Gear2; // initialize car gear... ALWAYS START IN SECOND GEAR!!!!
@@ -415,7 +417,7 @@ void TIM3_IRQHandler(void)
 
 void msg_safety_chk (void);
 bool init_status = 0; // bamocar init not completed
-volatile int CAN_error_flag = OFF;
+volatile int CAN_error_flag = OFF; 
 
 void msg_safety_chk(void){
 
@@ -601,7 +603,7 @@ void	_50_mSec_Tasks(void)
 	}
 	
 	updateTerminal();
-	msg_safety_chk(); 
+	// msg_safety_chk(); 
 	// send_output_msg(output_vector);
 	// safety_output_check(); // NOT DONE YET, NEED MAX AND MIN INFO FROM JAKE
 	

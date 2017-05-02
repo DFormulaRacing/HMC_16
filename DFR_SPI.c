@@ -796,6 +796,7 @@ void GLVS_disable(void){
 	SPI_output_vector.safety = OFF;
 }
 
+volatile uint16_t my_test;
 void	SPI1_IRQHandler(void)
 {
 	switch(SPI_io_state){
@@ -803,7 +804,13 @@ void	SPI1_IRQHandler(void)
 			GPIO_SetBits(GPIOC, GPIO_Pin_7);			//	SPI_CS1	PC7	CLT01-38SQ7
 			//	Read the Input chip data
 			// CLT_Read.word	=	SPI1->DR;	//	Read it to clear it, in case there's something in there.
+		#if 001
+			my_test = SPI1->DR;
+			add_to_SPI_ring(my_test);
+		#else
 			add_to_SPI_ring((uint16_t)SPI1->DR);
+		#endif 
+			
 			SPI1_SR	=	SPI1->SR;	//	Read it to clear it, in case there's something in there.
 			GPIO_ResetBits(GPIOB, GPIO_Pin_6);		//	SPI_CS2	PB6		VNI8200XP
 			 CLT_Read = debounce_SPI_input();
