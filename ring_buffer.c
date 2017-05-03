@@ -52,7 +52,7 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
-			8,								//  uint8_t DLC;
+			3,								//  uint8_t DLC;
 												//  uint8_t Data[8];
 			{BAMO_READ_REGID, MOTOR_RPM_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00} 
 	},
@@ -60,7 +60,7 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
-			8,								//  uint8_t DLC;
+			3,								//  uint8_t DLC;
 												//  uint8_t Data[8];
 			{BAMO_READ_REGID, MOTOR_CURRENT_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -68,7 +68,7 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
-			8,								//  uint8_t DLC;
+			3,								//  uint8_t DLC;
 												//  uint8_t Data[8];
 			{BAMO_READ_REGID, MOTOR_TORQUE_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -76,7 +76,7 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
-			8,								//  uint8_t DLC;
+			3,								//  uint8_t DLC;
 												//  uint8_t Data[8];
 			{BAMO_READ_REGID, MOTOR_VOLTAGE_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -84,7 +84,7 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
-			8,								//  uint8_t DLC;
+			3,								//  uint8_t DLC;
 												//  uint8_t Data[8];
 			{BAMO_READ_REGID, MOTOR_TEMP_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -92,7 +92,7 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
-			8,								//  uint8_t DLC;
+			3,								//  uint8_t DLC;
 												//  uint8_t Data[8];
 			{BAMO_READ_REGID, BAMOCAR_FAULT_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -100,7 +100,7 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
-			8,								//  uint8_t DLC;
+			3,								//  uint8_t DLC;
 												//  uint8_t Data[8];
 			{BAMO_READ_REGID, BAMOCAR_BUS_VOLTAGE_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -108,7 +108,7 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
-			8,								//  uint8_t DLC;
+			3,								//  uint8_t DLC;
 												//  uint8_t Data[8];
 			{BAMO_READ_REGID, BAMOCAR_D_OUT_1_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -128,6 +128,7 @@ void addToRing (CanRxMsg x) {
 	}
 	
 	buffer[writeIdx] = x;
+	
 	writeIdx++;
 	if (writeIdx >= BUFFER_SIZE){
 		writeIdx = 0;
@@ -141,6 +142,16 @@ bool readFromRing (volatile CAN_msg_t *msgTable) {
 		return false;
 	}
 
+	msgTable->messageType = buffer[readIdx].IDE;
+	if(buffer[readIdx].IDE	==	CAN_Id_Extended)
+	{
+		msgTable->messageID = buffer[readIdx].ExtId;
+	}
+	else
+	{
+		msgTable->messageID = buffer[readIdx].StdId;
+	}
+		
 	memcpy((void*)&msgTable->data, (void*)&buffer[readIdx].Data, sizeof(msgTable->data));
 			// msgTable[i].data = *((uint64_t *)&(My_RX_message.Data[0]));
 			// memcpy(&msgTable[i].data, &My_RX_message.Data[0], sizeof(msgTable[i].data));
@@ -328,15 +339,22 @@ void add_to_output_ring (CanTxMsg x) {
 int init_index = 0;
 bool bamocar_init(void){
 	
-	if(init_index < INIT_MESSAGE_COUNT) {
-		add_to_output_ring(bamocar_init_msg[init_index]);
-		init_index++;
-		return false; // not done
-	} else {
-		init_index = 0;
-		return true; // done
-		
-	}
+	#if 000
+		if(init_index < INIT_MESSAGE_COUNT) {
+			add_to_output_ring(bamocar_init_msg[init_index]);
+			init_index++;
+			return false; // not done
+		} else {
+			init_index = 0;
+			return true; // done
+		}
+	
+	#else
+		add_to_output_ring(bamocar_init_msg[6]);
+		add_to_output_ring(bamocar_init_msg[7]);
+	
+		return true;
+	#endif 
 }
 
 

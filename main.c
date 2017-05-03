@@ -29,7 +29,8 @@
 
 // a small helper... 
 #define	until(arg)	while(!(arg))
-#define ENABLE_CAN_INTERRUPTS (1) 
+// volatile int ENABLE_CAN_INTERRUPTS = ON;
+#define ENABLE_CAN_INTERRUPTS (1);
 
 
 // Setting Up Message Table
@@ -42,6 +43,7 @@ volatile	uint32_t		JLM_Debug;
 
 const int column = 12;
 // create message table
+
 volatile CAN_msg_t msgTable[] =
 {	
 	// PE3 messages
@@ -65,11 +67,12 @@ volatile CAN_msg_t msgTable[] =
 	{0x180, STD, 0x5F, 0, 1,13, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current // change to reg 27..?
 	{0x180, STD, 0xA0, 0, 1,14, column, "BAMO3",0,0}, // BAMOCAR 3 - Motor Torque
 	{0x180, STD, 0x8A, 0, 1,15, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Voltage
-	{0x180, STD, 0x49, 0, 1,16, column, "BAMO5",0,0}, // BAMOCAR 5 - Motor Temp
-	{0x180, STD, 0x8F, 0, 1,17, column, "BAMO5",0,0}, // BAMOCAR 6 - BAMOCAR_Fault
-	{0x180, STD, 0xEB, 0, 1,18, column, "BAMO5",0,0}, // BAMOCAR 7 - BAMOCAR Bus Voltage
-	{0x180, STD, 0xE0, 0, 1,18, column, "BAMO5",0,0}, // BAMOCAR 8 - BAMOCAR D_OUT 1
+	{0x180, STD, 0x49, 0, 1,16, column, "BAMO6",0,0}, // BAMOCAR 5 - Motor Temp
+	{0x180, STD, 0x8F, 0, 1,17, column, "BAMO7",0,0}, // BAMOCAR 6 - BAMOCAR_Fault
+	{0x180, STD, 0xEB, 0, 1,18, column, "BAMO8",0,0}, // BAMOCAR 7 - BAMOCAR Bus Voltage
+	{0x180, STD, 0xE0, 0, 1,19, column, "BAMO9",0,0}, // BAMOCAR 8 - BAMOCAR D_OUT 1
 
+	// ****** IF YOU CHANGE ANYTHING CHANGE MESSAGE TABLE SIZE IN THE WHILE LOOP FOR PARSING********
 	// NOTE: Bamocar transmits on ONE CAN message ID
 	// The REGID data field signifies what kind of
 	// info it holds. This will be delt in parsing...
@@ -205,6 +208,8 @@ bool clutch_threashold_passed = NOT_PRESSED; // create implementation
 bool safety_init_done_flag = false;
 extern volatile safety_states_t safety_state;
 
+volatile CAN_msg_t temp_msg;
+
 void updateTerminal(void);
 
 /*----------------------------------------------------------------------------
@@ -249,30 +254,101 @@ void updateTerminal(void);
 		// CAN_Transmit(CAN1, &My_TX_message); // test
 		//	If there's a CAN message, let's collect it...
 		{
-			#if	defined(ENABLE_CAN_INTERRUPTS)
-			if(isEmpty())
+			#if	 defined(ENABLE_CAN_INTERRUPTS) 
+			// if (ENABLE_CAN_INTERRUPTS)
+//			if(isEmpty())
+//			{
+//				// do nothing ring is empty
+//			}
+//			else 
+			
+			#if	001
+			
+			while(ringCounter>0)
 			{
-				// do nothing ring is empty
+
+				DISABLE_INTERRUPTS;
+				{
+					readFromRing(&temp_msg);
+				}
+				ENABLE_INTERRUPTS;
+				
+				// so now parse temp...
+				{
+					// parse the pending message in the buffer
+					bool done = false;
+					i = 0;
+					
+					msgTableSize = (sizeof(msgTable)/sizeof(CAN_msg_t));
+					//while( (i < msgTableSize) ) { /*(done == false) &&  */  /*&& (isEmpty() == false)*/
+					do
+					{
+						if( 
+//							((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType) && buffer[readIdx].StdId != 0x180) ||  // Regular
+//							((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].Data[0] == msgTable[i].REGID )) || // Bamocar
+//							((buffer[readIdx].ExtId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType)) // Extended
+							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType) && temp_msg.messageID != 0x180) ||  // Regular
+							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.data._8[0] == msgTable[i].REGID )) || // Bamocar
+							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType)) // Extended
+						) {
+							// ENABLE_CAN_INTERRUPTS = OFF;
+							//readFromRing(&msgTable[i]); // Fill in DOUBLE CHECK*****
+							msgTable[i] = temp_msg;
+							// ENABLE_CAN_INTERRUPTS = ON;
+							done = true;
+						} else {
+							i++; // increment
+						}
+					}
+					until(done or (i>=msgTableSize));
+					JLM_Debug = i;
+					JLM_Debug++;
+				}
+				
 			}
-			else 
+			
+			#else
+			
+			while((isEmpty()== false)) // aka not rempy
 			{ 
 				// parse the pending message in the buffer
 				bool done = false;
 				i = 0;
-				msgTableSize = (sizeof(msgTable)/sizeof(CAN_msg_t));
-				while((done == false) && (i < msgTableSize)) {
+				msgTableSize = 19; //(sizeof(msgTable)/sizeof(CAN_msg_t));
+				while( (i < msgTableSize) ) { /*(done == false) &&  */  /*&& (isEmpty() == false)*/
 					if( 
 						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType) && buffer[readIdx].StdId != 0x180) ||  // Regular
 						((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].Data[0] == msgTable[i].REGID )) || // Bamocar
 						((buffer[readIdx].ExtId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType)) // Extended
 					) {
+						// ENABLE_CAN_INTERRUPTS = OFF;
 						readFromRing(&msgTable[i]); // Fill in DOUBLE CHECK*****
+						// ENABLE_CAN_INTERRUPTS = ON;
 						done = true;
 					} else {
 						i++; // increment
+							if(!done)
+							{
+								CAN_msg_t temp;
+								readFromRing(&temp);
+							}
+							else
+							{
 					}
+					}
+//					if(!done)
+//					{
+//						CAN_msg_t temp;
+//						readFromRing(&temp);
+//					}
+//					else
+//					{
+//					}
 				}  
-			}	
+			}
+			#endif
+
+			
 			#endif
 		}	
 		
@@ -756,6 +832,7 @@ void DFR_CAN_Init(uint32_t u32SensorID)
 		CAN_Init(CAN1,	&CAN_InitStructure);
 
 		#if		(defined (ENABLE_CAN_INTERRUPTS)	)
+		// #if (ENABLE_CAN_INTERRUPTS)
 //void CAN_ITConfig(CAN_TypeDef* CANx, uint32_t CAN_IT, FunctionalState NewState)
 		
 		  {
@@ -784,7 +861,8 @@ void DFR_CAN_Init(uint32_t u32SensorID)
 
 
 
-#if	defined(ENABLE_CAN_INTERRUPTS)
+#if defined(ENABLE_CAN_INTERRUPTS)
+// #if (ENABLE_CAN_INTERRUPTS)
 
 void CAN1_TX_IRQHandler(void)
 {
@@ -843,7 +921,7 @@ void CAN1_RX0_IRQHandler(void)
 				
 				CAN_Receive(CAN1, CAN_FIFO0, &My_RX_message);
 
-				My_TX_message.Data[0]++; // if we get a ring, we visually acknowledge it by incrementing
+//				My_TX_message.Data[0]++; // if we get a ring, we visually acknowledge it by incrementing
 
 				addToRing(My_RX_message);
 

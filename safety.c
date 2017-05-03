@@ -31,7 +31,7 @@ bool ready_to_drive_func (void){
 			SPI_output_vector.ready_to_drive = ON;
 			ready_to_drive_count++;
 		} 
-		else if(SPI_output_vector.ready_to_drive == ON && ready_to_drive_count >= (5000/50)) { // Nmilliseconds / 50
+		else if(SPI_output_vector.ready_to_drive == ON && ready_to_drive_count >= (20000/50)) { // Nmilliseconds / 50
 			ready_to_drive_flag = OFF;
 			SPI_output_vector.ready_to_drive = OFF;
 			ready_to_drive_count = 0;
@@ -153,7 +153,7 @@ bool pedal_safety_check(void)
 			
 			if
 			(			 VNI_Read.bit.PG
-				and VNI_Read.bit.TWARN
+				and !VNI_Read.bit.TWARN
 //				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
@@ -198,7 +198,7 @@ bool pedal_safety_check(void)
 			(			CLT_Read.bit.PC1
 				and	CLT_Read.bit.PC2
 				and VNI_Read.bit.PG
-				and VNI_Read.bit.TWARN
+				and !VNI_Read.bit.TWARN
 //				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				)
@@ -225,11 +225,18 @@ bool pedal_safety_check(void)
 		{
 			SPI_output_vector.safety = ON;
 			SPI_output_vector.rfg = OFF;
-			ready_to_drive_flag = OFF;
+			// ready_to_drive_flag = OFF; // ***** PUT BACK!******
+			
+			if(input_vector.push_button_2){
+				ready_to_drive_flag = 1;
+			}
+			else{
+				// do nothing
+			}
 			
 			if
 			(			 VNI_Read.bit.PG
-				and VNI_Read.bit.TWARN
+				and !VNI_Read.bit.TWARN
 //				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
@@ -242,20 +249,23 @@ bool pedal_safety_check(void)
 				else 
 				{
 					safety_state = safety_two;
+					buzzer_done = ready_to_drive_func();
 				}
 			} 
 			else
 			{
-				safety_off_count++;
-			}
-			
-			if(safety_off_count >= SAFETY_OFF_COUNT_LOAD){
+				safety_off_count;// safety_off_count++;
+				
+				if(safety_off_count >= SAFETY_OFF_COUNT_LOAD){
 				safety_off_count = 0;
 				safety_state = safety_fault;
+				}
+				else{
+					safety_state = safety_one;
+				}
 			}
-			else{
-				safety_state = safety_one;
-			}
+			
+			
 			
 		}
 		break;
@@ -280,7 +290,7 @@ bool pedal_safety_check(void)
 			(			CLT_Read.bit.PC1
 				and	CLT_Read.bit.PC2
 				and VNI_Read.bit.PG
-				and VNI_Read.bit.TWARN
+				and !VNI_Read.bit.TWARN
 //				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
@@ -328,7 +338,7 @@ bool pedal_safety_check(void)
 			(			CLT_Read.bit.PC1
 				and	CLT_Read.bit.PC2
 				and VNI_Read.bit.PG
-				and VNI_Read.bit.TWARN
+				and !VNI_Read.bit.TWARN
 //				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields

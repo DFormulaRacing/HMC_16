@@ -14,7 +14,7 @@
 
 // input ring variables
 
-#define BUFFER_SIZE 3200
+#define BUFFER_SIZE 100
 extern CanRxMsg buffer[BUFFER_SIZE];
 extern volatile int readIdx;
 extern volatile int writeIdx;
