@@ -26,9 +26,10 @@
 #include "dfrshifter.h"
 #include "safety.h"
 
+
 // a small helper... 
 #define	until(arg)	while(!(arg))
-#define ENABLE_CAN_INTERRUPTS (1)
+#define ENABLE_CAN_INTERRUPTS (1) 
 
 
 // Setting Up Message Table
@@ -61,10 +62,13 @@ volatile CAN_msg_t msgTable[] =
 
 	// BAMOCAR messages
 	{0x180, STD, 0x30, 0, 1,12, column, "BAMO1",0,0}, // BAMOCAR 1 - RPM
-	{0x180, STD, 0x20, 0, 1,13, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current // change to reg 27..?
+	{0x180, STD, 0x5F, 0, 1,13, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current // change to reg 27..?
 	{0x180, STD, 0xA0, 0, 1,14, column, "BAMO3",0,0}, // BAMOCAR 3 - Motor Torque
-	{0x180, STD, 0x84, 0, 1,15, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Fault
+	{0x180, STD, 0x8A, 0, 1,15, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Voltage
 	{0x180, STD, 0x49, 0, 1,16, column, "BAMO5",0,0}, // BAMOCAR 5 - Motor Temp
+	{0x180, STD, 0x8F, 0, 1,17, column, "BAMO5",0,0}, // BAMOCAR 6 - BAMOCAR_Fault
+	{0x180, STD, 0xEB, 0, 1,18, column, "BAMO5",0,0}, // BAMOCAR 7 - BAMOCAR Bus Voltage
+	{0x180, STD, 0xE0, 0, 1,18, column, "BAMO5",0,0}, // BAMOCAR 8 - BAMOCAR D_OUT 1
 
 	// NOTE: Bamocar transmits on ONE CAN message ID
 	// The REGID data field signifies what kind of
@@ -73,14 +77,14 @@ volatile CAN_msg_t msgTable[] =
 };
 
 
-//output_vector_t output_vector[OUTPUT_VECTOR_SIZE] =
-//{
-//	{0,motor_torque_out,0,BAMOCAR_CAN_ID},
-//	{0,glvs_shutdown,0,0},
-//	{0,ready_to_drive,0,0},
-//	{0,shift_up,0,0},
-//	{0,shift_down,0,0},
-//};
+/* output_vector_t output_vector[OUTPUT_VECTOR_SIZE] =
+{
+	{0,motor_torque_out,0,BAMOCAR_CAN_ID},
+	{0,glvs_shutdown,0,0},
+	{0,ready_to_drive,0,0},
+	{0,shift_up,0,0},
+	{0,shift_down,0,0},
+}; */
 
 
 
@@ -216,17 +220,18 @@ extern volatile safety_states_t safety_state;
 	DFR_CAN_Init(0xFFFF12);
 	DFR_SPI_Init();
 	DFR_TIM3_Init();				//	Initialize TIM3 for a 1 mSec Interrupt  (TIM3 ISR)
-	
-	// always start out in Neutral
-	input_vector.c_gear = Neutral;
-	 
+
 	// test_shifter_algorithm();
 	
-
+	safety_init_done_flag = true; // also used for lock algorithm to sense when done initializing
+	 
+	input_vector.c_gear = Gear2; // initialize car gear... ALWAYS START IN SECOND GEAR!!!!
+	 
 	int i = 0; 
   for (;;) {
-		
+	
 		assign_inputs(); // update all values in input vector
+		input_vector.clutch_rdval = 120; // TAKE OUT!
 		
 		if(Print_Flag)		//	TIM3_IRQHandler() ISR sets Print_Flag, we clear it here...
 		{
@@ -288,7 +293,8 @@ void DFR_TIM3_Init(void)
 #else
   // 180MHz clock / 2 = 90MHz.  90MHz / 9 (prescaler) = 10MHz.  10MHz / 10000 = 1KHz (1mS).
   TIM_TimeBaseStructure.TIM_Period 		= (10000-1);
-  TIM_TimeBaseStructure.TIM_Prescaler = (9-1);
+  TIM_TimeBaseStructure.TIM_Prescaler = (90-1); 	// (9-1); (was this before5/2/17)
+	
 #endif
 
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
@@ -357,10 +363,13 @@ void updateTerminal(void){
 	printf("\033[%d;%dH %03d", 20, 15,input_vector.accel_rdval);
 	
 	printf("\033[%d;%dH %s",21,c,"Brake Pos.");
-	printf("\033[%d;%dH %d", 20, 15,input_vector.brake_rdval);
+	printf("\033[%d;%dH %d", 21, 15,input_vector.brake_rdval);
 	
 	printf("\033[%d;%dH %s",22,c,"Clutch Pos.");
-	printf("\033[%d;%dH %d", 20, 15,input_vector.clutch_rdval);
+	printf("\033[%d;%dH %d", 22, 15,input_vector.clutch_rdval);
+	
+	printf("\033[%d;%dH %s",24,c,"Mode =");
+	printf("\033[%d;%dH %d", 24, 10, mode);
 
 // print statement for mode
 //	if (input_vector.mode_switch == 1){
@@ -372,55 +381,84 @@ void updateTerminal(void){
 		
 }
 
+int _50_ms_task_delay = 0;
 
 void TIM3_IRQHandler(void) 
 {
 	// Clear the interrupt pending flag
   TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
 
-	GPIO_ResetBits(GPIOC, GPIO_Pin_7);		//	SPI_CS1	PC7	CLT01-38SQ7
-	SPI_I2S_SendData(SPI1, CLT_Write);
-	SPI_io_state = wait_for_SPI_A;
+	
+	_50_ms_task_delay++;
+	
+	if(1){//(_50_ms_task_delay >= 6000){
+
 		
-	if(_50_msec_counter)
-	{
-		_50_msec_counter--;
-	}
-	else
-	{
-		_50_msec_counter	=	50-1;
-		Print_Flag	=	true;
-		_50_mSec_Tasks();
+		GPIO_ResetBits(GPIOC, GPIO_Pin_7);		//	SPI_CS1	PC7	CLT01-38SQ7
+		SPI_I2S_SendData(SPI1, CLT_Write);
+		SPI_io_state = wait_for_SPI_A;
+		
+		 
+//		if(_50_msec_counter)
+//		{
+//			_50_msec_counter--;
+//		}
+//		else
+//		{
+//			_50_msec_counter	=	50-1;
+//			Print_Flag	=	true;
+////			_50_mSec_Tasks();
+//		}
+//		
+//		_50_ms_task_delay = 6001; // set high so you can run 50ms_task after 5second delay
 	}
 }
 
 
 void msg_safety_chk (void);
+bool init_status = 0; // bamocar init not completed
+volatile int CAN_error_flag = OFF; 
 
 void msg_safety_chk(void){
 
 	int n;
 	int msg_error_count[msgTableSize-1];
+	int missed_message = false;
 
 	for (n = 0; n < msgTableSize; n++){
+		#if 001
+		if(n < 6)
+		{
+			// do nothing because BAMOCAR IS NOT PRESENT
+			// HACK!!!
+		}
+		else
+		#endif
 		if(msgTable[n].msg_count == msgTable[n].old_count)
 		{
 			msg_error_count[n]++;
+			
 		}
-		else //if(msgTable[n].msg_count != msgTable[n].old_count)
+		else //if(msgTable[n].msg_count != msgTable[n].old_c ount)
 		{
 			msg_error_count[n] = 0;
 			msgTable[n].old_count = msgTable[n].msg_count;
+			init_status = 0; // init_status goes to 0 to restart bamocar init
+			missed_message = true;
 			// request msg function here
 		}
 
-		if(msg_error_count[n] == 20)
+		if(msg_error_count[n] >= 30)
 		{
 			printf("\033[%d;%dH Crit. Msg Error for %s, shut down",15,25, msgTable[n].name );
+			CAN_error_flag = ON;
 			// shutdown function
 		}
-	
 	}
+	
+	CAN_error_flag = missed_message; // what does this mean?
+	printf("\033[%d;%dH %s",15,25, "No Msg Error                      ");
+											
 }
 
 
@@ -433,17 +471,22 @@ enum HMC_states hmc_state;
 extern volatile car_mode_t mode;
 int brake_threshold = 100;
 int clutch_threshold = 100;
-bool init_status = 0; // init not completed
-volatile int CAN_error_flag = OFF; 
+
 
 void	_50_mSec_Tasks(void)
 {
 	// enum gear shifter(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed)
+	if(input_vector.clutch_rdval >= clutch_threshold){
+		clutch_threashold_passed = PRESSED;
+	} else{
+		clutch_threashold_passed = NOT_PRESSED;
+	}
+		
 	switch(mode) {
 		case hybrid:
 		{
 			input_vector.c_gear = shifter_hybrid_mode(input_vector.c_gear, input_vector.motor_rpm, input_vector.green_button, input_vector.red_button, clutch_threashold_passed); // create motor rpm input
-		}
+		}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
 		break;
 		
 		case gas:
@@ -474,8 +517,8 @@ void	_50_mSec_Tasks(void)
 		break;
 	}
 	
-	// put nested state machine for mode
-	
+	// put nested state machine for hybrid mode
+{
 	if(init_status == 0){
 		init_status = bamocar_init();
 	} else {
@@ -486,36 +529,37 @@ void	_50_mSec_Tasks(void)
 	
 	switch(hmc_state){
 		case (brake):
-			if (input_vector.clutch_rdval >= clutch_threshold) {
+			if (clutch_threashold_passed) {
 				hmc_state = clutch;
 			}
-			else if (input_vector.brake_rdval < brake_threshold && input_vector.clutch_rdval < clutch_threshold){
+			else if ((input_vector.brake_rdval < brake_threshold) && (input_vector.clutch_rdval < clutch_threshold)){
 				hmc_state = prop_torque;
 			} else {
-				// stay in brake
+				hmc_state = brake;
 			}
 			break;
 		case (clutch):
 			if (input_vector.brake_rdval >= brake_threshold) {
-				hmc_state = clutch;
+				hmc_state = brake;
 			}
-			else if (input_vector.brake_rdval < brake_threshold && input_vector.clutch_rdval < clutch_threshold){
+			else if ((input_vector.brake_rdval < brake_threshold) && clutch_threashold_passed){
 				hmc_state = prop_torque;
 			} else {
-				// stay in brake
+				hmc_state = clutch;
 			}
 			break;
 		case (prop_torque):
-			if (input_vector.brake_rdval >= brake_threshold || input_vector.clutch_rdval >= clutch_threshold){
+			if ((input_vector.brake_rdval >= brake_threshold) || clutch_threashold_passed){
 				hmc_state = clutch;
 			} else {
-				// stay in prop_torque
+				hmc_state = prop_torque;
 			}
 			break;
 		
 	}
+}
 	
-	// nested state machine
+	// nested state  machine
 	// first check what mode the car is in (hybrid, electric, or gas)
 	// when in hybrid execture another state machine
 	//		
@@ -558,9 +602,10 @@ void	_50_mSec_Tasks(void)
 			
 	}
 	
-	// updateTerminal();
-	// msg_safety_chk(); put back
+	//this needs to move to Main():updateTerminal();
+	// msg_safety_chk(); 
 	// send_output_msg(output_vector);
+	 safety_output_check(); // NOT DONE YET, NEED MAX AND MIN INFO FROM JAKE
 	
 	
 }

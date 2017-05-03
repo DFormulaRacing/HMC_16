@@ -121,24 +121,26 @@ bool pedal_safety_check(void)
 			
 			if
 			(		  VNI_Read.bit.PG
-				and VNI_Read.bit.TWARN
-				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
+				and !VNI_Read.bit.TWARN
+				// and (VNI_Read.bit.nP0 == !VNI_Read.bit.P0)
 				and (!CAN_error_flag))
 			{ // low true, double check if this works with John 
 				safety_state = safety_one;
+				safety_off_count = 0;
 			}
 			else
 			{
 				safety_off_count++;
+				if(safety_off_count >= SAFETY_OFF_COUNT_LOAD){
+					safety_off_count = 0;
+					safety_state = safety_fault;
+				}
+				else{
+					safety_state = safety_off;
+				}
 			}
 			
-			if(safety_off_count >= SAFETY_OFF_COUNT_LOAD){
-				safety_off_count = 0;
-				safety_state = safety_fault;
-			}
-			else{
-				safety_state = safety_off;
-			}
+				
 			
 		}
 		break;
@@ -152,7 +154,7 @@ bool pedal_safety_check(void)
 			if
 			(			 VNI_Read.bit.PG
 				and VNI_Read.bit.TWARN
-				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
+//				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
 				)
@@ -172,15 +174,16 @@ bool pedal_safety_check(void)
 			else
 			{
 				safety_off_count++;
+				if(safety_off_count >= SAFETY_OFF_COUNT_LOAD){
+					safety_off_count = 0;
+					safety_state = safety_fault;
+				}
+				else{
+					safety_state = safety_one;
+				}
+
 			}
 			
-			if(safety_off_count >= SAFETY_OFF_COUNT_LOAD){
-				safety_off_count = 0;
-				safety_state = safety_fault;
-			}
-			else{
-				safety_state = safety_one;
-			}
 			
 		}
 		break;
@@ -196,7 +199,7 @@ bool pedal_safety_check(void)
 				and	CLT_Read.bit.PC2
 				and VNI_Read.bit.PG
 				and VNI_Read.bit.TWARN
-				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
+//				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				)
 			{ 
@@ -227,7 +230,7 @@ bool pedal_safety_check(void)
 			if
 			(			 VNI_Read.bit.PG
 				and VNI_Read.bit.TWARN
-				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
+//				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
 				)
@@ -278,7 +281,7 @@ bool pedal_safety_check(void)
 				and	CLT_Read.bit.PC2
 				and VNI_Read.bit.PG
 				and VNI_Read.bit.TWARN
-				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
+//				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
 				)
@@ -326,7 +329,7 @@ bool pedal_safety_check(void)
 				and	CLT_Read.bit.PC2
 				and VNI_Read.bit.PG
 				and VNI_Read.bit.TWARN
-				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
+//				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
 				and (input_vector.bamocar_bus_voltage <= 14000 && input_vector.bamocar_bus_voltage >= 11000) // voltage check

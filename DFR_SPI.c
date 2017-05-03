@@ -60,6 +60,8 @@
 
 #include	"stm32f4xx_gpio.h"
 
+#define FORCE_PG (1) // TEMPORARY!
+
 
 
 //===============================================
@@ -745,7 +747,8 @@ void	Set_SPI_Outputs(volatile	VNI_Write_u_t	*WriteValue)
 
 //	WriteValue.bit.IN1	=	OFF;  test mechanism to force an output
 // WriteValue->bit.IN2	=	ON;
-//	WriteValue.bit.IN3	=	OFF;
+	WriteValue->bit.IN3	=	ON; // PUT THIS HIGH FOR DEBUGGING -- SOLVED: POWER ISSUE FROM BATTERY
+														// set high for electrical pre-inspection
 //	WriteValue.bit.IN4	=	OFF;
 //	WriteValue.bit.IN5	=	OFF;
 //	WriteValue.bit.IN6	=	OFF;
@@ -795,32 +798,7 @@ void GLVS_disable(void){
 	SPI_output_vector.safety = OFF;
 }
 
-extern int ready_to_drive_count;// = 0;
-extern int ready_to_drive_flag;// = OFF; // make external, use in initialize
-
-void ready_to_drive (void){
-	
-	if(ready_to_drive_flag){
-		if(SPI_output_vector.ready_to_drive == OFF){
-			SPI_output_vector.ready_to_drive = ON;
-			ready_to_drive_count++;
-		} 
-		else if(SPI_output_vector.ready_to_drive == ON && ready_to_drive_count == 5000) {
-			ready_to_drive_flag = OFF;
-			SPI_output_vector.ready_to_drive = OFF;
-			ready_to_drive_count = 0;
-		}
-		else {
-			ready_to_drive_count++;
-		}
-	} else {
-		return;
-	}
-}
-
-
-
-
+volatile uint16_t my_test;
 void	SPI1_IRQHandler(void)
 {
 	switch(SPI_io_state){
@@ -828,11 +806,23 @@ void	SPI1_IRQHandler(void)
 			GPIO_SetBits(GPIOC, GPIO_Pin_7);			//	SPI_CS1	PC7	CLT01-38SQ7
 			//	Read the Input chip data
 			// CLT_Read.word	=	SPI1->DR;	//	Read it to clear it, in case there's something in there.
+		#if 000
+			my_test = SPI1->DR;
+			add_to_SPI_ring(my_test);
+		#else
 			add_to_SPI_ring((uint16_t)SPI1->DR);
+		#endif 
+		
+// CLT_Read.word =	(uint16_t)SPI1->DR;
+		
 			SPI1_SR	=	SPI1->SR;	//	Read it to clear it, in case there's something in there.
-			GPIO_ResetBits(GPIOB, GPIO_Pin_6);		//	SPI_CS2	PB6		VNI8200XP
-			 CLT_Read = debounce_SPI_input();
-
+//			GPIO_ResetBits(GPIOB, GPIO_Pin_6);		//	SPI_CS2	PB6		VNI8200XP
+		
+	#if 000
+		CLT_Read.word =	(uint16_t)SPI1->DR;
+	#else
+		 CLT_Read = debounce_SPI_input();
+	#endif
 		
 			// put debouncing method here
 			// ring buffer
@@ -843,10 +833,8 @@ void	SPI1_IRQHandler(void)
 			input_vector.green_button = CLT_Read.bit.IN2;
 			input_vector.ice_mode = CLT_Read.bit.IN3;
 			input_vector.motor_mode = CLT_Read.bit.IN4;
-			//input_vector.lock_state = CLT_Read.bit.IN5;
-			input_vector.push_button_1 = CLT_Read.bit.IN6;
-			input_vector.push_button_2 = CLT_Read.bit.IN7;
-			
+			input_vector.push_button_1 = CLT_Read.bit.IN5;
+			input_vector.push_button_2 = CLT_Read.bit.IN6;
 			
 		
 			//	Turn something on
@@ -856,13 +844,23 @@ void	SPI1_IRQHandler(void)
 				VNI_Write.bit.IN2	=	SPI_output_vector.solenoid_2;
 				VNI_Write.bit.IN3	=	SPI_output_vector.safety;
 				VNI_Write.bit.IN4	=	SPI_output_vector.ready_to_drive;
-			//	VNI_Write.bit.IN5	=	SPI_output_vector.rfg_rfe;
+				VNI_Write.bit.IN5	=	SPI_output_vector.rfg;
 				VNI_Write.bit.IN6	=	OFF;
 				VNI_Write.bit.IN7	=	OFF;
 				VNI_Write.bit.IN8	=	OFF;
 				Set_SPI_Outputs(&VNI_Write);
 			}
 			
+//			if(VNI_Write.bit.IN3)
+//			{
+//			}
+//			else
+//			{
+//				JLM_Debug = VNI_Write.bit.IN3;
+//				JLM_Debug++;
+//			}
+			
+			GPIO_ResetBits(GPIOB, GPIO_Pin_6);		//	SPI_CS2	PB6		VNI8200XP
 			SPI_I2S_SendData(SPI1, VNI_Write.word);
 			SPI_io_state = wait_for_SPI_B;
 			break;
@@ -870,6 +868,10 @@ void	SPI1_IRQHandler(void)
 			GPIO_SetBits(GPIOB, GPIO_Pin_6);		//	SPI_CS2	PB6		VNI8200XP
 			//	Read the Output chip data
 			VNI_Read.word	=	SPI1->DR;	//	Read it to clear it, in case there's something in there.
+		
+			#ifdef FORCE_PG
+				VNI_Read.bit.PG = 1;
+			#endif 
 			SPI1_SR	=	SPI1->SR;	//	Read it to clear it, in case there's something in there.
 
 			SPI_io_state = wait_for_TIM3;
@@ -880,7 +882,6 @@ void	SPI1_IRQHandler(void)
 			break;
 	}
 	
-	ready_to_drive();
 }
 
 

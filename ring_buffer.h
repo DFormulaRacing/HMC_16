@@ -31,23 +31,23 @@ extern volatile bool flag_can_busy;
 extern volatile CanTxMsg bamocar_msg;
 extern volatile CanTxMsg output_ring_buff[OUTPUT_RING_SIZE];
 
-// typedef enum output_s {
-//	motor_torque_out,
-//	glvs_shutdown,
-//	ready_to_drive,
-//	shift_up,
-//	shift_down,
-//	
-//} output_t;
+/* typedef enum output_s {
+	motor_torque_out,
+	glvs_shutdown,
+	ready_to_drive,
+	shift_up,
+	shift_down,
+	
+} output_t;
 
 
-//volatile typedef struct output_vector_s{
-//	uint16_t data;
-//	output_t select;
-//	uint32_t update;
-//	uint32_t CANID;
-//	
-//} output_vector_t; 
+volatile typedef struct output_vector_s{
+	uint16_t data;
+	output_t select;
+	uint32_t update;
+	uint32_t CANID;
+	
+} output_vector_t; */
 
 
 // input ring buff stuff
