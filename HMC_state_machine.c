@@ -5,11 +5,12 @@
 #include 	"stm32f4xx_can.h"
 #include "ring_buffer.h" // change
 #include "DFR_SPI.h" // need for ready_to_drive_flag
+#include "dfrshifter.h"
 
 float desired_kP(void){
 
 	
-	int gear;
+	enum gear gear_num;
 
 	/* Do we have to put in some timing thing????*/
 
@@ -21,26 +22,27 @@ float desired_kP(void){
 	float kP_invalid = 0;
 	float kP;
 
-	gear = get_gear();
+	gear_num = input_vector.c_gear;
+// {Gear1, Gear2, Gear3, Gear4, Gear5, Neutral, Shifting};
+	switch(gear_num){
 
-	switch(gear){
-
-	case 1:
+	case Gear1:
 		kP = kP_gear1;
 		break;
-	case 2:
+	case Gear2:
 		kP = kP_gear2;
 		break;
-	case 3:
+	case Gear3:
 		kP = kP_gear3;
 		break;
-	case 4:
+	case Gear4:
 		kP = kP_gear4;
 		break;
-	case 5:
+	case Gear5:
 		kP = kP_gear5;
 		break;
-	case 0:
+	case Neutral: // step down to Shifting for kP_invalid
+	case Shifting:
 		kP = kP_invalid;
 		break;
 	}
@@ -61,51 +63,51 @@ float electric_torque(void){
 	return motor_torque;
 }
 
-int get_gear(void){
-	
-	extern input_vector_t input_vector;
+//int get_gear(void){
+//	
+//	extern input_vector_t input_vector;
 
-	float motor_shaft_speed = input_vector.motor_rpm; 
-	float engine_rpm_speed = input_vector.engine_rpm;
+//	float motor_shaft_speed = input_vector.motor_rpm; 
+//	float engine_rpm_speed = input_vector.engine_rpm;
 
-	int gear;
-	float current_gear_ratio;
-	float gear_1_ratio = (13.0f/32.0f)*(24.0f/73.0f); // = .13356
-	float gear_2_ratio = (16.0f/32.0f)*(24.0f/73.0f); // = .16438
-	float gear_3_ratio = (17.0f/28.0f)*(24.0f*73.0f); // = .19961
-	float gear_4_ratio = (19.0f/26.0f)*(24.0f/73.0f); // = .24025
-	float gear_5_ratio = (21.0f/25.0f)*(24.0f/73.0f); // = .27616
+//	int gear;
+//	float current_gear_ratio;
+//	float gear_1_ratio = (13.0f/32.0f)*(24.0f/73.0f); // = .13356
+//	float gear_2_ratio = (16.0f/32.0f)*(24.0f/73.0f); // = .16438
+//	float gear_3_ratio = (17.0f/28.0f)*(24.0f/73.0f); // = .19961
+//	float gear_4_ratio = (19.0f/26.0f)*(24.0f/73.0f); // = .24025
+//	float gear_5_ratio = (21.0f/25.0f)*(24.0f/73.0f); // = .27616
 
-	current_gear_ratio = motor_shaft_speed/engine_rpm_speed;
+//	current_gear_ratio = motor_shaft_speed/engine_rpm_speed;
 
-	if (current_gear_ratio <= gear_1_ratio + .01f && current_gear_ratio >= gear_1_ratio -.01f)			// create .02 band around each gear ratio
-		{
-			gear = 1;
-		}
-		else if (current_gear_ratio <= gear_2_ratio + .01f && current_gear_ratio >= gear_2_ratio -.01f)
-		{
-			gear = 2;
-		}
-		else if (current_gear_ratio <= gear_3_ratio + .01f && current_gear_ratio >= gear_3_ratio -.01f)
-		{
-			gear = 3;
-		}
-		else if (current_gear_ratio <= gear_4_ratio + .01f && current_gear_ratio >= gear_4_ratio -.01f)
-		{
-			gear = 4;
-		}
-		else if (current_gear_ratio <= gear_5_ratio + .01f && current_gear_ratio >= gear_5_ratio -.01f)
-		{
-			gear = 5;
-		}
-		else
-		{
-			gear = 0;
-		}
+//	if (current_gear_ratio <= gear_1_ratio + .01f && current_gear_ratio >= gear_1_ratio -.01f)			// create .02 band around each gear ratio
+//		{
+//			gear = 1;
+//		}
+//		else if (current_gear_ratio <= gear_2_ratio + .01f && current_gear_ratio >= gear_2_ratio -.01f)
+//		{
+//			gear = 2;
+//		}
+//		else if (current_gear_ratio <= gear_3_ratio + .01f && current_gear_ratio >= gear_3_ratio -.01f)
+//		{
+//			gear = 3;
+//		}
+//		else if (current_gear_ratio <= gear_4_ratio + .01f && current_gear_ratio >= gear_4_ratio -.01f)
+//		{
+//			gear = 4;
+//		}
+//		else if (current_gear_ratio <= gear_5_ratio + .01f && current_gear_ratio >= gear_5_ratio -.01f)
+//		{
+//			gear = 5;
+//		}
+//		else
+//		{
+//			gear = 0;
+//		}
 
-	return gear;
+//	return gear;
 
-}
+//}
 
 
 float get_engine_torque(void){
@@ -137,20 +139,26 @@ float get_engine_torque(void){
 
 extern volatile CanTxMsg bamocar_msg;
 
+
 void torque_command(float motor_torque)
 {
-	current_output = (uint16_t)(motor_torque/kT)*(count/max_current);
+	current_output	=	(uint16_t)(motor_torque/kT)*(count/max_current);	
 	
-	memcpy((void*)&bamocar_msg.Data[1], (void*)&current_output, sizeof(uint16_t));
+	bamocar_msg.Data[1]	=	 (current_output & 0x00FF);
+	bamocar_msg.Data[2]	=	((current_output & 0xFF00)>>8);
 	
 	add_to_output_ring(bamocar_msg);
 	
-	/*craft CAN message to output to torqeu */
+	/*craft CAN message to output to torque */
 	/* don't forget that the Unitek uses counts instead of torque */
+	
+	/* 
+	should we put something for demoing in electric mode?
+	*/
 
 }
 
-car_mode_t mode = car_off; // make external?
+volatile car_mode_t mode = car_off; // make external?
 car_mode_t old_mode;
 
 
@@ -163,12 +171,14 @@ lock_unlock_t	lock_state = LU_UNLOCK;
 
 uint8_t push_button_2_z1 = 0;
 
+extern volatile int ready_to_drive_flag;
+extern bool safety_init_done_flag;
 void lock_unlock_state(void){
 	
 	switch(lock_state){
 		case (LU_UNLOCK):
 		{
-			mode = (car_mode_t)((input_vector.motor_mode << 1 ) |  input_vector.ice_mode + (~ready_to_drive_flag));
+			mode = (car_mode_t)( ((input_vector.motor_mode << 1 ) |  input_vector.ice_mode) + (~safety_init_done_flag)); // Double check with John to see if this makes sense
 			if(input_vector.push_button_2 & ~push_button_2_z1) // detect rising edge
 			{
 				lock_state = LU_LOCK;
@@ -210,8 +220,14 @@ void assign_inputs(void){
 	input_vector.engine_temp = msgTable[4].data._16[1];
 
 	input_vector.accel_rdval = msgTable[2].data._8[0];
+// input_vector.accel_pot1 = .....;
+// input_vector.accel_pot2 = .....;
 	input_vector.brake_rdval = msgTable[2].data._16[1];
+// has to be remapped to analog input
 	input_vector.clutch_rdval = msgTable[2].data._16[2]; 
+// input_vector.clutch_pot1 = ....;
+// input_vector.clutch_pot2 = ....;
+
 		// might need to create two input values since the reading
 		// is on two different analog signals
 		
@@ -254,17 +270,27 @@ void assign_inputs(void){
 		// ------ BAMOCAR inputs ------
 		// Have to use memcpy() because it's 16bit data in an 8bit address
 		// find conversion rates
+		
 		// motor rpm
 	memcpy((void*)&input_vector.motor_rpm, (void*)&msgTable[11].data._8[1], sizeof(uint16_t));
 		// motor current
 	memcpy((void*)&input_vector.motor_current, (void*)&msgTable[12].data._8[1], sizeof(uint16_t));
 		// motor torque read value
 	memcpy((void*)&input_vector.motor_torque_rdval, (void*)&msgTable[13].data._8[1], sizeof(uint16_t));
-		// motor fault
-	memcpy((void*)&input_vector.motor_fault, (void*)&msgTable[14].data._8[1], sizeof(uint16_t));
+		// motor voltage
+	memcpy((void*)&input_vector.motor_voltage, (void*)&msgTable[14].data._8[1], sizeof(uint16_t));
 		// motor temperature
 	memcpy((void*)&input_vector.motor_temp, (void*)&msgTable[15].data._8[1], sizeof(uint16_t));
-		
+		// motor fault
+	memcpy((void*)&input_vector.bamocar_fault, (void*)&msgTable[16].data._8[1], sizeof(uint16_t));
+		// bamoar bus voltage
+	memcpy((void*)&input_vector.bamocar_bus_voltage, (void*)&msgTable[17].data._8[1], sizeof(uint16_t));
+	
+	
+		// bamocar DOUT_1 ***** MAKE SURE THIS IS THE RIGHT WAY TO GET DOUT1********
+	memcpy((void*)&input_vector.bamocar_dout_1, (void*)&msgTable[18].data._8[1], sizeof(uint16_t));
+	
+	
 	
 	// End of input assignments
 	

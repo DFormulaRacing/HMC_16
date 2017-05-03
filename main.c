@@ -24,7 +24,7 @@
 #include "ring_buffer.h" // will need to change
 #include	"DFR_SPI.h"
 #include "dfrshifter.h"
-
+#include "safety.h"
 
 // a small helper... 
 #define	until(arg)	while(!(arg))
@@ -73,14 +73,14 @@ volatile CAN_msg_t msgTable[] =
 };
 
 
-output_vector_t output_vector[OUTPUT_VECTOR_SIZE] =
-{
-	{0,motor_torque_out,0,BAMOCAR_CAN_ID},
-	{0,glvs_shutdown,0,0},
-	{0,ready_to_drive,0,0},
-	{0,shift_up,0,0},
-	{0,shift_down,0,0},
-};
+//output_vector_t output_vector[OUTPUT_VECTOR_SIZE] =
+//{
+//	{0,motor_torque_out,0,BAMOCAR_CAN_ID},
+//	{0,glvs_shutdown,0,0},
+//	{0,ready_to_drive,0,0},
+//	{0,shift_up,0,0},
+//	{0,shift_down,0,0},
+//};
 
 
 
@@ -197,7 +197,9 @@ volatile	int	My_Time = 0;
 input_vector_t input_vector;
 volatile SPI_output_vector_t SPI_output_vector;
 
-bool clutch_threashold_passed = PRESSED; // create implementation
+bool clutch_threashold_passed = NOT_PRESSED; // create implementation
+bool safety_init_done_flag = false;
+extern volatile safety_states_t safety_state;
 
 /*----------------------------------------------------------------------------
  * main: blink LED and check button state
@@ -428,10 +430,11 @@ float engine_torque;
 float motor_torque;
 float kP;
 enum HMC_states hmc_state;
-extern car_mode_t mode;
+extern volatile car_mode_t mode;
 int brake_threshold = 100;
 int clutch_threshold = 100;
 bool init_status = 0; // init not completed
+volatile int CAN_error_flag = OFF; 
 
 void	_50_mSec_Tasks(void)
 {

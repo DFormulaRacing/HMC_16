@@ -581,97 +581,97 @@ extern volatile input_vector_t input_vector;
 //}
 //CLT_Read_t;
 
-typedef	struct	CLT_Read_s
-{
-	int	High	:	1;		//	This is bit 0
-	int	Low		:	1;		//	This is bit 1
-	int	PC4		:	1;		//	This is bit 1
-	int	PC3		:	1;		//	This is bit 1
+//typedef	struct	CLT_Read_s
+//{
+//	int	High	:	1;		//	This is bit 0
+//	int	Low		:	1;		//	This is bit 1
+//	int	PC4		:	1;		//	This is bit 1
+//	int	PC3		:	1;		//	This is bit 1
 
-	int	PC2		:	1;		//	This is bit 1
-	int	PC1		:	1;		//	This is bit 1
-	int	OTA		:	1;		//	This is bit 1
-	int	UVA		:	1;		//	This is bit 1
+//	int	PC2		:	1;		//	This is bit 1
+//	int	PC1		:	1;		//	This is bit 1
+//	int	OTA		:	1;		//	This is bit 1
+//	int	UVA		:	1;		//	This is bit 1
 
-	int	IN1		:	1;		//	This is bit 1
-	int	IN2		:	1;		//	This is bit 1
-	int	IN3		:	1;		//	This is bit 1
-	int	IN4		:	1;		//	This is bit 1
- 	int	IN5		:	1;		//	This is bit 1
-	int	IN6		:	1;		//	This is bit 1
-	int	IN7		:	1;		//	This is bit 1
-	int	IN8		:	1;		//	This is bit 1
-}
-CLT_Read_t;
+//	int	IN1		:	1;		//	This is bit 1
+//	int	IN2		:	1;		//	This is bit 1
+//	int	IN3		:	1;		//	This is bit 1
+//	int	IN4		:	1;		//	This is bit 1
+// 	int	IN5		:	1;		//	This is bit 1
+//	int	IN6		:	1;		//	This is bit 1
+//	int	IN7		:	1;		//	This is bit 1
+//	int	IN8		:	1;		//	This is bit 1
+//}
+//CLT_Read_t;
 
-typedef	struct	VNI_Read_s
-{
-	uint16_t	nP0		:	1;		//	This is bit 0
-	uint16_t	P0		:	1;		//	This is bit 1
-	uint16_t	P1		:	1;		//	This is bit 1
-	uint16_t	P2		:	1;		//	This is bit 1
+//typedef	struct	VNI_Read_s
+//{
+//	uint16_t	nP0		:	1;		//	This is bit 0
+//	uint16_t	P0		:	1;		//	This is bit 1
+//	uint16_t	P1		:	1;		//	This is bit 1
+//	uint16_t	P2		:	1;		//	This is bit 1
 
-	uint16_t	PG		:	1;		//	This is bit 1			//	Power Good Status bit
-	uint16_t	PC		:	1;		//	This is bit 1			//	Parity Check Status bit
-	uint16_t	TWARN	:	1;		//	This is bit 1		//	Temperature Warning bit
-	uint16_t	FBOK	:	1;		//	This is bit 1
+//	uint16_t	PG		:	1;		//	This is bit 1			//	Power Good Status bit
+//	uint16_t	PC		:	1;		//	This is bit 1			//	Parity Check Status bit
+//	uint16_t	TWARN	:	1;		//	This is bit 1		//	Temperature Warning bit
+//	uint16_t	FBOK	:	1;		//	This is bit 1
 
-	uint16_t	F1		:	1;		//	This is bit 1
-	uint16_t	F2		:	1;		//	This is bit 1
-	uint16_t	F3		:	1;		//	This is bit 1
-	uint16_t	F4		:	1;		//	This is bit 1
-	uint16_t	F5		:	1;		//	This is bit 1
-	uint16_t	F6		:	1;		//	This is bit 1
-	uint16_t	F7		:	1;		//	This is bit 1
-	uint16_t	F8		:	1;		//	This is bit 1
-}
-VNI_Read_t;
-
-
-typedef	union	CLT_Read_u
-{
-	uint16_t		word;
-	uint8_t			bytes[2];
-	CLT_Read_t	bit;
-}
-CLT_Read_u_t;
-
-typedef	union	VNI_Read_u
-{
-	uint16_t		word;
-	uint8_t			bytes[2];
-	VNI_Read_t	bit;
-}
-VNI_Read_u_t;
+//	uint16_t	F1		:	1;		//	This is bit 1
+//	uint16_t	F2		:	1;		//	This is bit 1
+//	uint16_t	F3		:	1;		//	This is bit 1
+//	uint16_t	F4		:	1;		//	This is bit 1
+//	uint16_t	F5		:	1;		//	This is bit 1
+//	uint16_t	F6		:	1;		//	This is bit 1
+//	uint16_t	F7		:	1;		//	This is bit 1
+//	uint16_t	F8		:	1;		//	This is bit 1
+//}
+//VNI_Read_t;
 
 
-typedef	struct	VNI_Write_s
-{
-	uint16_t	nP0		:	1;		//	This is bit 0
-	uint16_t	P0		:	1;		//	This is bit 1
-	uint16_t	P1		:	1;		//	This is bit 2
-	uint16_t	P2		:	1;		//	This is bit 3
+//typedef	union	CLT_Read_u
+//{
+//	uint16_t		word;
+//	uint8_t			bytes[2];
+//	CLT_Read_t	bit;
+//}
+//CLT_Read_u_t;
 
-	uint16_t	SPARE		:	4;		//	This is bits 4-7
-
-	uint16_t	IN1		:	1;		//	This is bit 9
-	uint16_t	IN2		:	1;		//	This is bit 10
-	uint16_t	IN3		:	1;		//	This is bit 11
-	uint16_t	IN4		:	1;		//	This is bit 12
-	uint16_t	IN5		:	1;		//	This is bit 13
-	uint16_t	IN6		:	1;		//	This is bit 14
-	uint16_t	IN7		:	1;		//	This is bit 15
-	uint16_t	IN8		:	1;		//	This is bit 8
-}
-VNI_Write_t;
+//typedef	union	VNI_Read_u
+//{
+//	uint16_t		word;
+//	uint8_t			bytes[2];
+//	VNI_Read_t	bit;
+//}
+//VNI_Read_u_t;
 
 
-typedef	union	VNI_Write_u
-{
-	uint16_t		word;
-	VNI_Write_t	bit;
-}
-VNI_Write_u_t;
+//typedef	struct	VNI_Write_s
+//{
+//	uint16_t	nP0		:	1;		//	This is bit 0
+//	uint16_t	P0		:	1;		//	This is bit 1
+//	uint16_t	P1		:	1;		//	This is bit 2
+//	uint16_t	P2		:	1;		//	This is bit 3
+
+//	uint16_t	SPARE		:	4;		//	This is bits 4-7
+
+//	uint16_t	IN1		:	1;		//	This is bit 9
+//	uint16_t	IN2		:	1;		//	This is bit 10
+//	uint16_t	IN3		:	1;		//	This is bit 11
+//	uint16_t	IN4		:	1;		//	This is bit 12
+//	uint16_t	IN5		:	1;		//	This is bit 13
+//	uint16_t	IN6		:	1;		//	This is bit 14
+//	uint16_t	IN7		:	1;		//	This is bit 15
+//	uint16_t	IN8		:	1;		//	This is bit 8
+//}
+//VNI_Write_t;
+
+
+//typedef	union	VNI_Write_u
+//{
+//	uint16_t		word;
+//	VNI_Write_t	bit;
+//}
+//VNI_Write_u_t;
 
 
 
@@ -795,8 +795,8 @@ void GLVS_disable(void){
 	SPI_output_vector.safety = OFF;
 }
 
-int ready_to_drive_count = 0;
-int ready_to_drive_flag = OFF; // make external, use in initialize
+extern int ready_to_drive_count;// = 0;
+extern int ready_to_drive_flag;// = OFF; // make external, use in initialize
 
 void ready_to_drive (void){
 	
@@ -843,7 +843,7 @@ void	SPI1_IRQHandler(void)
 			input_vector.green_button = CLT_Read.bit.IN2;
 			input_vector.ice_mode = CLT_Read.bit.IN3;
 			input_vector.motor_mode = CLT_Read.bit.IN4;
-			input_vector.lock_state = CLT_Read.bit.IN5;
+			//input_vector.lock_state = CLT_Read.bit.IN5;
 			input_vector.push_button_1 = CLT_Read.bit.IN6;
 			input_vector.push_button_2 = CLT_Read.bit.IN7;
 			
@@ -856,7 +856,7 @@ void	SPI1_IRQHandler(void)
 				VNI_Write.bit.IN2	=	SPI_output_vector.solenoid_2;
 				VNI_Write.bit.IN3	=	SPI_output_vector.safety;
 				VNI_Write.bit.IN4	=	SPI_output_vector.ready_to_drive;
-				VNI_Write.bit.IN5	=	SPI_output_vector.rfg_rfe;
+			//	VNI_Write.bit.IN5	=	SPI_output_vector.rfg_rfe;
 				VNI_Write.bit.IN6	=	OFF;
 				VNI_Write.bit.IN7	=	OFF;
 				VNI_Write.bit.IN8	=	OFF;

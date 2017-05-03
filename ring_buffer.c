@@ -22,49 +22,98 @@ volatile bool flag_can_busy;
 
 volatile CanTxMsg output_ring_buff[OUTPUT_RING_SIZE]; // will need to make output ring buff to handle CAN and non-CAN message
 
-CanTxMsg bamocar_init_msg[5] = 
+/*
+{0x180, STD, 0x30, 0, 1,12, column, "BAMO1",0,0}, // BAMOCAR 1 - RPM
+	{0x180, STD, 0x5F, 0, 1,13, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current // change to reg 27..?
+	{0x180, STD, 0xA0, 0, 1,14, column, "BAMO3",0,0}, // BAMOCAR 3 - Motor Torque
+	{0x180, STD, 0x8A, 0, 1,15, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Voltage
+	{0x180, STD, 0x49, 0, 1,16, column, "BAMO5",0,0}, // BAMOCAR 5 - Motor Temp
+	{0x180, STD, 0x8F, 0, 1,17, column, "BAMO5",0,0}, // BAMOCAR 6 - BAMOCAR_Fault
+	{0x180, STD, 0xEB, 0, 1,18, column, "BAMO5",0,0}, // BAMOCAR 7 - BAMOCAR Bus Voltage
+*/
+
+#define TRANSMIT_TO_BAMO_ID 0x210
+#define BAMO_READ_REGID 0x3D
+#define _100_ms_transmission 0x64 // 0x64 = 100
+
+#define MOTOR_RPM_REGID 0x30
+#define MOTOR_CURRENT_REGID 0x5F
+#define MOTOR_TORQUE_REGID 0xA0
+#define MOTOR_VOLTAGE_REGID 0x8A
+#define MOTOR_TEMP_REGID 0x49
+#define BAMOCAR_FAULT_REGID 0x8F
+#define BAMOCAR_BUS_VOLTAGE_REGID 0xFB
+#define BAMOCAR_D_OUT_1_REGID 0xE0
+
+#define	INIT_MESSAGE_COUNT 8
+CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] = 
 {
-	{		0x181,						//  uint32_t StdId;						1
+	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						1
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
 			8,								//  uint8_t DLC;
 												//  uint8_t Data[8];
-			{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+			{BAMO_READ_REGID, MOTOR_RPM_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00} 
 	},
-	{		0x182,						//  uint32_t StdId;						2
+	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						2
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
 			8,								//  uint8_t DLC;
 												//  uint8_t Data[8];
-			{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+			{BAMO_READ_REGID, MOTOR_CURRENT_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
-	{		0x183,						//  uint32_t StdId;						3
+	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						3
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
 			8,								//  uint8_t DLC;
 												//  uint8_t Data[8];
-			{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+			{BAMO_READ_REGID, MOTOR_TORQUE_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
-	{		0x184,						//  uint32_t StdId;						4
+	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						4
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
 			8,								//  uint8_t DLC;
 												//  uint8_t Data[8];
-			{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+			{BAMO_READ_REGID, MOTOR_VOLTAGE_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
-	{		0x185,						//  uint32_t StdId;						5
+	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						5
 			0,								//  uint32_t ExtId; 
 			CAN_Id_Standard,	//  uint8_t IDE; 											
 			CAN_RTR_Data,			//  uint8_t RTR;
 			8,								//  uint8_t DLC;
 												//  uint8_t Data[8];
-			{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+			{BAMO_READ_REGID, MOTOR_TEMP_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						6
+			0,								//  uint32_t ExtId; 
+			CAN_Id_Standard,	//  uint8_t IDE; 											
+			CAN_RTR_Data,			//  uint8_t RTR;
+			8,								//  uint8_t DLC;
+												//  uint8_t Data[8];
+			{BAMO_READ_REGID, BAMOCAR_FAULT_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						7
+			0,								//  uint32_t ExtId; 
+			CAN_Id_Standard,	//  uint8_t IDE; 											
+			CAN_RTR_Data,			//  uint8_t RTR;
+			8,								//  uint8_t DLC;
+												//  uint8_t Data[8];
+			{BAMO_READ_REGID, BAMOCAR_BUS_VOLTAGE_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						7
+			0,								//  uint32_t ExtId; 
+			CAN_Id_Standard,	//  uint8_t IDE; 											
+			CAN_RTR_Data,			//  uint8_t RTR;
+			8,								//  uint8_t DLC;
+												//  uint8_t Data[8];
+			{BAMO_READ_REGID, BAMOCAR_D_OUT_1_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 };
+
 
 
 
@@ -73,7 +122,8 @@ void addToRing (CanRxMsg x) {
 	if(ringCounter >= BUFFER_SIZE) {
 		//while(1);
 		// BUFFER IS FULL!
-		printf("Buffer is full\n");
+		// printf("Input Buffer is full\n");
+		printf("\033[%d;%dH %s",31,1,"Input CAN Buffer is full\n\r");
 		return;
 	}
 	
@@ -129,7 +179,7 @@ bool isEmpty (void) {
 // OUTPUT + OUTPUT RINGBUFF STUFF
 volatile CanTxMsg bamocar_msg = 
 	{
-	0x180,								//  uint32_t StdId;  /*!< Specifies the standard identifier.
+	0x210,								//  uint32_t StdId;  /*!< Specifies the standard identifier.
 										//                        This parameter can be a value between 0 to 0x7FF. */
 										//
 	0,					//  uint32_t ExtId;  /*!< Specifies the extended identifier.
@@ -162,7 +212,8 @@ volatile CanTxMsg bamocar_msg =
 
 // change name ... don't think we need this anymore... just need add to ring buff
 
-void send_output_msg(output_vector_t output_vector[]){
+// **** NOT NEEDED****
+/* void send_output_msg(output_vector_t output_vector[]){
 	int i;
 	for(i = 0; i<OUTPUT_VECTOR_SIZE-1; i++){
 		if(output_vector[i].update == 1){
@@ -196,12 +247,15 @@ void send_output_msg(output_vector_t output_vector[]){
 			}
 		}
 	}	
-};
+};*/
 
 
-extern output_vector_t output_vector[OUTPUT_VECTOR_SIZE];
 
-void update_output_vector(uint16_t data, output_t select){
+// **** NOT NEEDED****
+// extern output_vector_t output_vector[OUTPUT_VECTOR_SIZE];
+
+// **** NOT NEEDED****
+/*void update_output_vector(uint16_t data, output_t select){
 	int i;
 	
 	for(i = 0; i<OUTPUT_VECTOR_SIZE-1;i++){
@@ -216,7 +270,7 @@ void update_output_vector(uint16_t data, output_t select){
 	}
 	
 	
-}
+}*/
 
 bool send_from_output_buff (volatile CanTxMsg output_ring_buff[]) {
 	if (out_ring_count ==0) {
@@ -246,10 +300,10 @@ bool send_from_output_buff (volatile CanTxMsg output_ring_buff[]) {
 }
 
 void add_to_output_ring (CanTxMsg x) {
-	if(ringCounter >= OUTPUT_RING_SIZE) {
+	if(out_ring_count >= OUTPUT_RING_SIZE) {
 		//while(1);
 		// BUFFER IS FULL!
-		printf("output Buffer is full\n");
+		printf("\033[%d;%dH %s",30,1,"output CAN Buffer is full\n\r");
 		return;
 	}
 	
@@ -274,14 +328,15 @@ void add_to_output_ring (CanTxMsg x) {
 int init_index = 0;
 bool bamocar_init(void){
 	
-	if(init_index < 5) {
+	if(init_index < INIT_MESSAGE_COUNT) {
 		add_to_output_ring(bamocar_init_msg[init_index]);
 		init_index++;
 		return false; // not done
 	} else {
+		init_index = 0;
 		return true; // done
+		
 	}
-	
 }
 
 

@@ -703,6 +703,11 @@
               <FileType>1</FileType>
               <FilePath>.\dfrshifter.c</FilePath>
             </File>
+            <File>
+              <FileName>safety.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\safety.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
