@@ -205,6 +205,8 @@ bool clutch_threashold_passed = NOT_PRESSED; // create implementation
 bool safety_init_done_flag = false;
 extern volatile safety_states_t safety_state;
 
+void updateTerminal(void);
+
 /*----------------------------------------------------------------------------
  * main: blink LED and check button state
  *----------------------------------------------------------------------------*/
@@ -273,6 +275,8 @@ extern volatile safety_states_t safety_state;
 			}	
 			#endif
 		}	
+		
+		updateTerminal();
   }
 }
 
@@ -328,7 +332,7 @@ void	_50_mSec_Tasks(void);
 uint16_t	Print_Counter	=	10;
 uint16_t _50_msec_counter = 50-1;
 
-void updateTerminal(void);
+
 
 void updateTerminal(void){
 	int i;
@@ -399,18 +403,18 @@ void TIM3_IRQHandler(void)
 		SPI_io_state = wait_for_SPI_A;
 		
 		 
-//		if(_50_msec_counter)
-//		{
-//			_50_msec_counter--;
-//		}
-//		else
-//		{
-//			_50_msec_counter	=	50-1;
-//			Print_Flag	=	true;
-////			_50_mSec_Tasks();
-//		}
-//		
-//		_50_ms_task_delay = 6001; // set high so you can run 50ms_task after 5second delay
+		if(_50_msec_counter)
+		{
+			_50_msec_counter--;
+		}
+		else
+		{
+			_50_msec_counter	=	5-1; // 5*10 ms          //= 50-1; was this before 5/2/2017
+			Print_Flag	=	true;
+			_50_mSec_Tasks();
+		}
+		
+		// _50_ms_task_delay = 6001; // set high so you can run 50ms_task after 5second delay
 	}
 }
 
@@ -602,7 +606,7 @@ void	_50_mSec_Tasks(void)
 			
 	}
 	
-	//this needs to move to Main():updateTerminal();
+	
 	// msg_safety_chk(); 
 	// send_output_msg(output_vector);
 	 safety_output_check(); // NOT DONE YET, NEED MAX AND MIN INFO FROM JAKE
