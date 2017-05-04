@@ -54,10 +54,36 @@ float desired_kP(void){
 // uint16_t max_torque = 200; // N*m
 uint16_t max_torque = 30; // N*m for testing
 
-#define RPM_MAX (1000.0f)
+#define RPM_MAX (3000.0f)
 
-volatile CanTxMsg bamocar_speed_msg;
+volatile CanTxMsg bamocar_speed_msg = 
+	{
+	0x210,								//  uint32_t StdId;  /*!< Specifies the standard identifier.
+										//                        This parameter can be a value between 0 to 0x7FF. */
+										//
+	0,					//  uint32_t ExtId;  /*!< Specifies the extended identifier.
+										//                        This parameter can be a value between 0 to 0x1FFFFFFF. */
+										//
+	CAN_Id_Standard,	//  uint8_t IDE;     /*!< Specifies the type of identifier for the message that 
+										//                        will be transmitted. This parameter can be a value 
+										//                        of @ref CAN_identifier_type */
+										//
+	CAN_RTR_Data,			//  uint8_t RTR;     /*!< Specifies the type of frame for the message that will 
+										//                        be transmitted. This parameter can be a value of 
+										//                        @ref CAN_remote_transmission_request */
+										//
+	3,								//  uint8_t DLC;     /*!< Specifies the length of the frame that will be 
+										//                        transmitted. This parameter can be a value between 
+										//                        0 to 8 */
+										//
+										//  uint8_t Data[8]; /*!< Contains the data to be transmitted. It ranges from 0 
+										//                        to 0xFF. */
+	{0x31,    0, 0 , 0, 0, 0, 0, 0}
+// ^REGID
+	};
 volatile float speed_command_debug;
+volatile uint16_t speed_cmd;
+
 
 float electric_torque(void){
 	
@@ -85,6 +111,14 @@ float electric_torque(void){
 	{
 		// leave it alone
 	}
+	
+	speed_cmd = (uint16_t)temp;
+
+	
+	bamocar_speed_msg.Data[1]	=	 (speed_cmd & 0x00FF);
+	bamocar_speed_msg.Data[2]	=	((speed_cmd & 0xFF00)>>8);
+	
+	add_to_output_ring(bamocar_speed_msg);
 	
 	
 	speed_command_debug = temp;

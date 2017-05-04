@@ -397,6 +397,7 @@ int buzzer_timer = 0;
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
 //				and (input_vector.bamocar_bus_voltage <= 14000 && input_vector.bamocar_bus_voltage >= 11000) // voltage check
 				and (input_vector.motor_rpm <= 3000) // rpm limiter for driving
+				and (!ACCEL_PADAL_FAULT)
 			//and (input_vector.motor_rpm <= 500) // rpm limiter for testing/demo for inspection
 				)
 			{ 
@@ -421,8 +422,8 @@ int buzzer_timer = 0;
 		
 		case safety_fault:
 		{
-			SPI_output_vector.safety = ON;
-			SPI_output_vector.rfg = ON;
+			SPI_output_vector.safety = OFF;
+			SPI_output_vector.rfg = OFF;
 			ready_to_drive_flag = OFF;
 		}
 		break;
