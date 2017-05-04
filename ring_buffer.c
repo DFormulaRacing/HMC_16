@@ -155,8 +155,8 @@ bool readFromRing (volatile CAN_msg_t *msgTable) {
 	memcpy((void*)&msgTable->data, (void*)&buffer[readIdx].Data, sizeof(msgTable->data));
 			// msgTable[i].data = *((uint64_t *)&(My_RX_message.Data[0]));
 			// memcpy(&msgTable[i].data, &My_RX_message.Data[0], sizeof(msgTable[i].data));
-	msgTable->update = 1;
-	msgTable->msg_count++;
+//	msgTable->update = 1;
+//	msgTable->msg_count++;
 //printf("%llu\n\r", msgTable->data);
 
 	ringCounter--;
@@ -339,7 +339,7 @@ void add_to_output_ring (CanTxMsg x) {
 int init_index = 0;
 bool bamocar_init(void){
 	
-	#if 000
+	#if 001
 		if(init_index < INIT_MESSAGE_COUNT) {
 			add_to_output_ring(bamocar_init_msg[init_index]);
 			init_index++;

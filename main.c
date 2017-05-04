@@ -210,6 +210,8 @@ extern volatile safety_states_t safety_state;
 
 volatile CAN_msg_t temp_msg;
 
+extern volatile car_mode_t car_mode;
+
 void updateTerminal(void);
 
 /*----------------------------------------------------------------------------
@@ -283,17 +285,26 @@ void updateTerminal(void);
 					//while( (i < msgTableSize) ) { /*(done == false) &&  */  /*&& (isEmpty() == false)*/
 					do
 					{
+						if ((temp_msg.messageID == 0x180) and (temp_msg.messageID == msgTable[i].messageID))
+						{
+							JLM_Debug = temp_msg.messageID;
+							JLM_Debug++;
+						}
+						
 						if( 
 //							((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType) && buffer[readIdx].StdId != 0x180) ||  // Regular
 //							((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].Data[0] == msgTable[i].REGID )) || // Bamocar
 //							((buffer[readIdx].ExtId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType)) // Extended
-							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType) && temp_msg.messageID != 0x180) ||  // Regular
-							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.data._8[0] == msgTable[i].REGID )) || // Bamocar
-							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType)) // Extended
+						//	((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType) && temp_msg.messageID != 0x180) ||  // Regular
+							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.data._8[0] == msgTable[i].REGID ) && (temp_msg.messageID == 0x180) ) 
+//						|| // Bamocar
+						//	((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType)) // Extended
 						) {
 							// ENABLE_CAN_INTERRUPTS = OFF;
 							//readFromRing(&msgTable[i]); // Fill in DOUBLE CHECK*****
-							msgTable[i] = temp_msg;
+							msgTable[i].data._64 = temp_msg.data._64;
+							msgTable[i].update = 1;
+							msgTable[i].msg_count++;
 							// ENABLE_CAN_INTERRUPTS = ON;
 							done = true;
 						} else {
@@ -352,7 +363,7 @@ void updateTerminal(void);
 			#endif
 		}	
 		
-		updateTerminal();
+		// updateTerminal();
   }
 }
 
@@ -449,7 +460,7 @@ void updateTerminal(void){
 	printf("\033[%d;%dH %d", 22, 15,input_vector.clutch_rdval);
 	
 	printf("\033[%d;%dH %s",24,c,"Mode =");
-	printf("\033[%d;%dH %d", 24, 10, mode);
+	printf("\033[%d;%dH %d", 24, 10, car_mode);
 
 // print statement for mode
 //	if (input_vector.mode_switch == 1){
@@ -548,7 +559,7 @@ float engine_torque;
 float motor_torque;
 float kP;
 enum HMC_states hmc_state;
-extern volatile car_mode_t mode;
+
 int brake_threshold = 100;
 int clutch_threshold = 100;
 
@@ -561,8 +572,10 @@ void	_50_mSec_Tasks(void)
 	} else{
 		clutch_threashold_passed = NOT_PRESSED;
 	}
+	
+	lock_unlock_state();
 		
-	switch(mode) {
+	switch(car_mode) {
 		case hybrid:
 		{
 			input_vector.c_gear = shifter_hybrid_mode(input_vector.c_gear, input_vector.motor_rpm, input_vector.green_button, input_vector.red_button, clutch_threashold_passed); // create motor rpm input
@@ -605,7 +618,7 @@ void	_50_mSec_Tasks(void)
 		init_status = 1;
 	};
 	
-	void lock_unlock_state(void);
+	
 	
 	switch(hmc_state){
 		case (brake):
@@ -643,7 +656,7 @@ void	_50_mSec_Tasks(void)
 	// first check what mode the car is in (hybrid, electric, or gas)
 	// when in hybrid execture another state machine
 	//		
-	switch (mode){
+	switch (car_mode){
 		case(hybrid):
 			switch(hmc_state){
 				case brake:

@@ -18,7 +18,7 @@ typedef enum car_mode_e{
 	electric = 1,
 	car_off = 0, 		// don't renumber them
 	
-	init = 5,
+	init = 4,
 } car_mode_t;
 
 enum HMC_states{
@@ -39,6 +39,7 @@ enum gear shifter_gas_mode(enum gear c_gear, int RPM, bool uPressed, bool dPress
 enum gear shifter_hybrid_mode(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed);
 enum gear shifter_electric_mode(enum gear c_gear, int RPM, bool uPressed, bool dPressed, bool cPressed);
 void set_mode (void);
+void lock_unlock_state(void);
 
 typedef struct Bamo_data_16_s{
 	uint8_t REGID; // change back to uint8_t

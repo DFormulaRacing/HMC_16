@@ -51,14 +51,16 @@ float desired_kP(void){
 
 }
 
-uint16_t max_current = 200; // Amps
+// uint16_t max_torque = 200; // N*m
+uint16_t max_torque = 30; // N*m for testing
 
 float electric_torque(void){
 	
 	float tps = input_vector.accel_rdval;
 	float motor_torque;
 	
-	motor_torque = (tps/100.0f)*max_current;
+	// should this be max torque????
+	motor_torque = (tps/100.0f)*max_torque;
 	
 	return motor_torque;
 }
@@ -136,6 +138,7 @@ float get_engine_torque(void){
 	float kT = .75f; // = Nm / (A rms) 
 	uint16_t count = 2^15;
 //	uint16_t max_current = 200; // Amps
+		uint16_t max_current = 20; // Amps for testing
 
 extern volatile CanTxMsg bamocar_msg;
 
@@ -158,7 +161,7 @@ void torque_command(float motor_torque)
 
 }
 
-volatile car_mode_t mode = car_off; // make external?
+volatile car_mode_t car_mode = car_off; // make external?
 car_mode_t old_mode;
 
 
@@ -178,10 +181,13 @@ void lock_unlock_state(void){
 	switch(lock_state){
 		case (LU_UNLOCK):
 		{
-			mode = (car_mode_t)( ((input_vector.motor_mode << 1 ) |  input_vector.ice_mode) + (~safety_init_done_flag)); // Double check with John to see if this makes sense
+			car_mode = (car_mode_t)( ((input_vector.motor_mode) |  input_vector.ice_mode << 1) + ((!safety_init_done_flag) << 2 )); // Double check with John to see if this makes sense
+
 			if(input_vector.push_button_2 & ~push_button_2_z1) // detect rising edge
 			{
 				lock_state = LU_LOCK;
+//				car_mode = (car_mode_t)( ((input_vector.motor_mode) |  input_vector.ice_mode << 1) + ((!safety_init_done_flag) << 2 )); // Double check with John to see if this makes sense
+
 			}
 			else
 			{
@@ -192,7 +198,7 @@ void lock_unlock_state(void){
 		
 		case(LU_LOCK):
 		{
-			if(~input_vector.motor_mode & ~input_vector.ice_mode)
+			if((!input_vector.motor_mode) && (!input_vector.ice_mode))
 			{
 				lock_state = LU_UNLOCK;
 			}
@@ -205,7 +211,7 @@ void lock_unlock_state(void){
 	}
 	
 	push_button_2_z1 = input_vector.push_button_2;
-	old_mode = mode;
+	old_mode = car_mode;
 	
 }
 
