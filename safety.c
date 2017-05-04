@@ -99,6 +99,14 @@ bool pedal_safety_check(void)
 int buzzer_timer = 0;
  bool safety_output_check(void){
 	
+	 if (buzzer_timer){
+				buzzer_timer--;
+			SPI_output_vector.ready_to_drive = ON;
+	 }else{
+			SPI_output_vector.ready_to_drive = OFF;
+			//
+	 }
+	 
 	switch(safety_state){
 		
 		case safety_init:
@@ -197,9 +205,9 @@ int buzzer_timer = 0;
 			ready_to_drive_flag = OFF;			
 			
 			if
-			(			CLT_Read.bit.PC1
-				and	CLT_Read.bit.PC2
-				and VNI_Read.bit.PG
+			(	//		CLT_Read.bit.PC1
+				//and	CLT_Read.bit.PC2
+						VNI_Read.bit.PG
 				and !VNI_Read.bit.TWARN
 //				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
@@ -240,7 +248,7 @@ int buzzer_timer = 0;
 			{ 
 				if (input_vector.bamocar_dout_1) 
 				{
-					buzzer_timer = 0;
+					buzzer_timer = BUZZER_TIMER_LOAD;
 					safety_state = safety_three;
 				} 
 				else 
@@ -272,15 +280,6 @@ int buzzer_timer = 0;
 			SPI_output_vector.rfg = OFF;
 			
 			
-			if (buzzer_timer < 100){
-				buzzer_timer++;
-			SPI_output_vector.ready_to_drive = ON;
-			}else{
-				SPI_output_vector.ready_to_drive = OFF;
-			//
-			}
-
-			
 			// buzzer_done = ready_to_drive_func();
 			
 			if(
@@ -292,16 +291,16 @@ int buzzer_timer = 0;
 				safety_state = safety_init;
 			}
 			else if
-			(			CLT_Read.bit.PC1
-				and	CLT_Read.bit.PC2
-				and VNI_Read.bit.PG
+			(	//		CLT_Read.bit.PC1
+				//and	CLT_Read.bit.PC2
+						VNI_Read.bit.PG
 				and !VNI_Read.bit.TWARN
 //				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
-				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
+			//	and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
 				)
 			{ 
-				if (buzzer_timer >= 100)
+				if (buzzer_timer == 0)
 				{
 					SPI_output_vector.ready_to_drive = OFF;
 					safety_state = safety_four;
@@ -343,9 +342,9 @@ int buzzer_timer = 0;
 				safety_state = safety_init;
 			}
 			else if
-			(			CLT_Read.bit.PC1
-				and	CLT_Read.bit.PC2
-				and VNI_Read.bit.PG
+			(	//		CLT_Read.bit.PC1
+				//and	CLT_Read.bit.PC2
+					VNI_Read.bit.PG
 				and !VNI_Read.bit.TWARN
 //				and (VNI_Read.bit.nP0 == ~VNI_Read.bit.P0)
 				and (!CAN_error_flag)							// low true, double check if this works with John
