@@ -79,18 +79,17 @@ volatile typedef struct input_vector_s {
 	// ------- PE3 inputs ------
 	
 	uint16_t	engine_rpm;
-	uint16_t	engine_MAP;
-	uint16_t	engine_temp;
+	int16_t	engine_MAP;
+	int16_t	engine_temp;
 	
-	uint16_t	brake_rdval;
+	int16_t	brake_rdval;
+	int16_t clutch_rdval;
+	int16_t	clutch_pot1;
+	int16_t	clutch_pot2;
 	
-	uint16_t	clutch_rdval;
-	uint16_t	clutch_pot1;
-	uint16_t	clutch_pot2;
-	
-	uint16_t	accel_rdval;
-	uint16_t 	accel_pot1;
-	uint16_t	accel_pot2;
+	int16_t	accel_rdval; // TPS
+	int16_t accel_pot1;
+	int16_t	accel_pot2;
 	
 	// ------- BMS inputs -------
 	

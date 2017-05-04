@@ -24,3 +24,4 @@ extern volatile int ready_to_drive_flag;
 // Function declarations
 bool safety_output_check(void);
 bool ready_to_drive_func (void);
+bool pedal_safety_check(void);

@@ -54,15 +54,41 @@ float desired_kP(void){
 // uint16_t max_torque = 200; // N*m
 uint16_t max_torque = 30; // N*m for testing
 
+#define RPM_MAX (1000.0f)
+
+volatile CanTxMsg bamocar_speed_msg;
+volatile float speed_command_debug;
+
 float electric_torque(void){
 	
-	float tps = input_vector.accel_rdval;
+	
+	#if 000
+	
 	float motor_torque;
 	
 	// should this be max torque????
 	motor_torque = (tps/100.0f)*max_torque;
 	
 	return motor_torque;
+	#else
+	
+	float temp = ((input_vector.accel_pot1-120.0f)/(900.0f-120.0f))*RPM_MAX;
+	
+	if(temp > RPM_MAX){
+		temp = RPM_MAX;
+	}else
+	if(temp <= 0)
+	{
+		temp = 0;
+	}
+	else
+	{
+		// leave it alone
+	}
+	
+	
+	speed_command_debug = temp;
+	#endif
 }
 
 //int get_gear(void){
@@ -225,12 +251,14 @@ void assign_inputs(void){
 	input_vector.engine_MAP = msgTable[1].data._16[1];
 	input_vector.engine_temp = msgTable[4].data._16[1];
 
-	input_vector.accel_rdval = msgTable[2].data._8[0];
-// input_vector.accel_pot1 = .....;
-// input_vector.accel_pot2 = .....;
+	input_vector.accel_rdval = msgTable[0].data._16[1];
+	
+	input_vector.accel_pot1 = msgTable[2].data._16[0];
+	input_vector.accel_pot2 = msgTable[2].data._16[1];
+	
 	input_vector.brake_rdval = msgTable[2].data._16[1];
 // has to be remapped to analog input
-	input_vector.clutch_rdval = msgTable[2].data._16[2]; 
+// input_vector.clutch_rdval = msgTable[2].data._16[2]; 
 // input_vector.clutch_pot1 = ....;
 // input_vector.clutch_pot2 = ....;
 

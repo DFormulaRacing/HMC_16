@@ -285,7 +285,8 @@ void updateTerminal(void);
 					//while( (i < msgTableSize) ) { /*(done == false) &&  */  /*&& (isEmpty() == false)*/
 					do
 					{
-						if ((temp_msg.messageID == 0x180) and (temp_msg.messageID == msgTable[i].messageID))
+//						if ((temp_msg.messageID == 0x180) and (temp_msg.messageID == msgTable[i].messageID))
+						if ((temp_msg.messageID == 0x0CFFF248) and (temp_msg.messageID == msgTable[i].messageID))
 						{
 							JLM_Debug = temp_msg.messageID;
 							JLM_Debug++;
@@ -295,10 +296,9 @@ void updateTerminal(void);
 //							((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType) && buffer[readIdx].StdId != 0x180) ||  // Regular
 //							((buffer[readIdx].StdId == msgTable[i].messageID) && (buffer[readIdx].Data[0] == msgTable[i].REGID )) || // Bamocar
 //							((buffer[readIdx].ExtId == msgTable[i].messageID) && (buffer[readIdx].IDE == msgTable[i].messageType)) // Extended
-						//	((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType) && temp_msg.messageID != 0x180) ||  // Regular
-							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.data._8[0] == msgTable[i].REGID ) && (temp_msg.messageID == 0x180) ) 
-//						|| // Bamocar
-						//	((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType)) // Extended
+							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType) && temp_msg.messageID != 0x180) ||  // Regular
+							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.data._8[0] == msgTable[i].REGID ) && (temp_msg.messageID == 0x180) )    || // Bamocar
+							((temp_msg.messageID == msgTable[i].messageID) && (temp_msg.messageType == msgTable[i].messageType)) // Extended
 						) {
 							// ENABLE_CAN_INTERRUPTS = OFF;
 							//readFromRing(&msgTable[i]); // Fill in DOUBLE CHECK*****
@@ -676,6 +676,8 @@ void	_50_mSec_Tasks(void)
 			// do we need init here, i think so...
 			motor_torque = electric_torque(); // change to function based on TPS
 			torque_command(motor_torque);
+		
+			// **** FOR INSPECTION WE'RE USING RPM MODE*******
 			break;
 		
 		case (gas):
@@ -699,7 +701,8 @@ void	_50_mSec_Tasks(void)
 	// msg_safety_chk(); 
 	// send_output_msg(output_vector);
 	 safety_output_check(); // NOT DONE YET, NEED MAX AND MIN INFO FROM JAKE
-	
+	 pedal_safety_check();
+	 electric_torque();
 	
 }
 

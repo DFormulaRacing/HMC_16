@@ -63,37 +63,83 @@ float accel_pot1_weighted;
 float accel_pot2_weighted;
 float tps_weighted;
 
+#define ACCEL_1_UPPER_THRESHOLD (950)
+#define ACCEL_1_LOWER_THRESHOLD (75)
+#define ACCEL_2_UPPER_THRESHOLD (550)
+#define ACCEL_2_LOWER_THRESHOLD (75)
 
+volatile bool ACCEL_PADAL_FAULT = false; 
+
+typedef enum accel_pedal_fault_e {
+	
+	no_fault_state,
+	fault_state,
+} accel_pedal_fault_t;
+
+accel_pedal_fault_t accel_pedal_fault_state = no_fault_state;
+
+int accel_pedal_fault_state_count = 0;
 bool pedal_safety_check(void)
 {
-	tps_weighted = input_vector.accel_rdval/100.0f;
-	
-	clutch_pot1_weighted = input_vector.clutch_pot1/CLUTCH_POT1_MAX;
-	clutch_pot2_weighted = input_vector.clutch_pot2/CLUTCH_POT1_MAX;
-	
-	accel_pot1_weighted = input_vector.accel_pot1/ACCEL_POT1_MAX;
-	accel_pot2_weighted = input_vector.accel_pot2/ACCEL_POT2_MAX;
-	
-	if(
-		(clutch_pot1_weighted <= clutch_pot2_weighted-CLUTCH_TOL) |
-		(clutch_pot1_weighted >= clutch_pot2_weighted+CLUTCH_TOL)		) {
-			return false;
-		}
-	else{
-		return true;
-	}
+	switch(accel_pedal_fault_state){
+		case(no_fault_state):
+		{
+			if((input_vector.accel_pot1 > ACCEL_1_UPPER_THRESHOLD) || (input_vector.accel_pot1 < ACCEL_1_LOWER_THRESHOLD)  ||
+				 (input_vector.accel_pot2 > ACCEL_2_UPPER_THRESHOLD) || (input_vector.accel_pot2 < ACCEL_2_LOWER_THRESHOLD)
+				)
+			{
+				accel_pedal_fault_state_count++;
+			}
+			else
+			{
+				accel_pedal_fault_state_count = 0;
+			}
 			
-	if(
-		(tps_weighted <= accel_pot1_weighted-ACCEL_TOL) |
-		(tps_weighted >= accel_pot1_weighted+ACCEL_TOL)		) {
-			return false;
+			if(accel_pedal_fault_state_count >= 5){
+			
+				accel_pedal_fault_state = fault_state;
+				ACCEL_PADAL_FAULT = true;
+				accel_pedal_fault_state_count = 0;
+
+			}
+			else {
+				// stay here
+			}
 		}
-	else{
-		return true;
+		break;
+		
+		case(fault_state):
+		{
+			if((input_vector.accel_pot1 > ACCEL_1_UPPER_THRESHOLD) || (input_vector.accel_pot1 < ACCEL_1_LOWER_THRESHOLD)  ||
+				 (input_vector.accel_pot2 > ACCEL_2_UPPER_THRESHOLD) || (input_vector.accel_pot2 < ACCEL_2_LOWER_THRESHOLD)
+				)
+			{
+				accel_pedal_fault_state_count = 0;
+			}
+			else
+			{
+				accel_pedal_fault_state_count++;
+			}
+			
+			if(accel_pedal_fault_state_count >= 20){
+			
+				accel_pedal_fault_state = no_fault_state;
+				ACCEL_PADAL_FAULT = false;
+				accel_pedal_fault_state_count = 0;
+			}
+			else {
+				// stay here
+			}
+		}
+		break;
+		
 	}
 	
 	
-	return true;
+	
+
+	
+	return ACCEL_PADAL_FAULT;
 }
 
 int buzzer_timer = 0;
