@@ -63,9 +63,10 @@ float accel_pot1_weighted;
 float accel_pot2_weighted;
 float tps_weighted;
 
-#define ACCEL_1_UPPER_THRESHOLD (950)
-#define ACCEL_1_LOWER_THRESHOLD (75)
-#define ACCEL_2_UPPER_THRESHOLD (550)
+#define ACCEL_1_UPPER_THRESHOLD (1400)
+#define ACCEL_1_LOWER_THRESHOLD (40)
+
+#define ACCEL_2_UPPER_THRESHOLD (750)
 #define ACCEL_2_LOWER_THRESHOLD (75)
 
 volatile bool ACCEL_PADAL_FAULT = false; 
@@ -281,7 +282,7 @@ int buzzer_timer = 0;
 		{
 			SPI_output_vector.safety = ON;
 			SPI_output_vector.rfg = OFF;
-			// ready_to_drive_flag = OFF; // ***** PUT BACK!******
+			 // ready_to_drive_flag = OFF; // ***** PUT BACK!******
 			
 			
 			if
@@ -292,7 +293,7 @@ int buzzer_timer = 0;
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
 				)
 			{ 
-				if (input_vector.bamocar_dout_1) 
+				if ((input_vector.bamocar_dout_1) && (input_vector.push_button_2 == ON)) 
 				{
 					buzzer_timer = BUZZER_TIMER_LOAD;
 					safety_state = safety_three;
@@ -381,11 +382,15 @@ int buzzer_timer = 0;
 			ready_to_drive_flag = OFF;
 			
 			if(
-				(car_mode == hybrid) & (!input_vector.ice_mode)
+				(car_mode == hybrid) && (!input_vector.ice_mode)
 				or
 				(!input_vector.bamocar_dout_1) // 
 			) {
 				safety_state = safety_init;
+			}
+			else if (input_vector.bamocar_dout_1 != 1)
+			{
+				safety_state = safety_one;
 			}
 			else if
 			(	//		CLT_Read.bit.PC1
@@ -396,7 +401,7 @@ int buzzer_timer = 0;
 				and (!CAN_error_flag)							// low true, double check if this works with John
 				and (!input_vector.bamocar_fault) // fault will fill bit fields, no faults means that 0s in bitfields
 //				and (input_vector.bamocar_bus_voltage <= 14000 && input_vector.bamocar_bus_voltage >= 11000) // voltage check
-				and (input_vector.motor_rpm <= 3000) // rpm limiter for driving
+//				and (input_vector.motor_rpm <= 3000) // rpm limiter for driving
 				and (!ACCEL_PADAL_FAULT)
 			//and (input_vector.motor_rpm <= 500) // rpm limiter for testing/demo for inspection
 				)
@@ -408,6 +413,8 @@ int buzzer_timer = 0;
 			{
 				safety_off_count++;
 			}
+			
+			
 			
 			if(safety_off_count >= SAFETY_OFF_COUNT_LOAD){
 				safety_off_count = 0;
@@ -425,6 +432,9 @@ int buzzer_timer = 0;
 			SPI_output_vector.safety = OFF;
 			SPI_output_vector.rfg = OFF;
 			ready_to_drive_flag = OFF;
+			
+			/* **** FOR DEMO ONLY!***** */
+			safety_state = safety_off;
 		}
 		break;
 	}

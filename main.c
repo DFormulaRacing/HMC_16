@@ -63,7 +63,7 @@ volatile CAN_msg_t msgTable[] =
 	//{0x00, STD, 0} // BMS 6
 
 	// BAMOCAR messages
-	{0x180, STD, 0x30, 0, 1,12, column, "BAMO1",0,0}, // BAMOCAR 1 - RPM
+	{0x180, STD, 0xA8, 0, 1,12, column, "BAMO1",0,0}, // BAMOCAR 1 - RPM
 	{0x180, STD, 0x5F, 0, 1,13, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current // change to reg 27..?
 	{0x180, STD, 0xA0, 0, 1,14, column, "BAMO3",0,0}, // BAMOCAR 3 - Motor Torque
 	{0x180, STD, 0x8A, 0, 1,15, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Voltage
@@ -103,6 +103,7 @@ void DFR_TIM3_Init(void);
 void DFR_CAN_Init(uint32_t u32SensorID);
 
 extern int stdout_init (void);
+extern volatile CanTxMsg motec_msg;
 
 volatile uint32_t msTicks;                            /* counts 1ms timeTicks */
 /*----------------------------------------------------------------------------
@@ -218,7 +219,7 @@ void updateTerminal(void);
  * main: blink LED and check button state
  *----------------------------------------------------------------------------*/
  int main (void) {
-  int32_t max_num = LED_GetCount();
+    int32_t max_num = LED_GetCount();
 
 	//SystemCoreClockConfigure();                              /* configure HSI as System Clock */
   SystemCoreClockUpdate();
@@ -363,7 +364,7 @@ void updateTerminal(void);
 			#endif
 		}	
 		
-		// updateTerminal();
+		 updateTerminal();
   }
 }
 
@@ -418,14 +419,17 @@ void	_50_mSec_Tasks(void);
 
 uint16_t	Print_Counter	=	10;
 uint16_t _50_msec_counter = 50-1;
-
+uint16_t temp;
 
 
 void updateTerminal(void){
 	int i;
 	int c = 1;
-	for(i = 0; i < msgTableSize; i++){
 	
+	//temp = motec_msg.Data[1]/8 + motec_msg.Data[0];
+	temp = input_vector.motor_rpm*6000/32767;
+	for(i = 0; i < msgTableSize; i++){
+	/*
 		if(msgTable[i].update == 1)
 		{
 			printf("\033[%d;%dH %s",msgTable[i].row,c,msgTable[i].name);
@@ -443,10 +447,13 @@ void updateTerminal(void){
 	
 	printf("\033[%d;%dH %s",17,c,"Engine Temp");
 	printf("\033[%d;%dH %d", 17, 15, input_vector.engine_temp);
+	*/
+	printf("\033[%d;%dH %s",18,c,"Motor RPM count");
+	printf("\033[%d;%dH %05d", 18, 15, input_vector.motor_rpm);
 	
-	printf("\033[%d;%dH %s",18,c,"Motor RPM");
-	printf("\033[%d;%dH %d", 18, 15, input_vector.motor_rpm);
-	
+	printf("\033[%d;%dH %s",19,c,"Motor RPM "); // change back to Motor Torque
+	printf("\033[%d;%dH %05d", 19, 15,temp); //msgTable[9].data.Bamo_data_16.REGID
+	/*
 	printf("\033[%d;%dH %s",19,c,"Motor Torque"); // change back to Motor Torque
 	printf("\033[%d;%dH %d", 19, 15,input_vector.motor_torque_rdval); //msgTable[9].data.Bamo_data_16.REGID
 	
@@ -461,7 +468,7 @@ void updateTerminal(void){
 	
 	printf("\033[%d;%dH %s",24,c,"Mode =");
 	printf("\033[%d;%dH %d", 24, 10, car_mode);
-
+*/ 
 // print statement for mode
 //	if (input_vector.mode_switch == 1){
 //		printf("\033[%d;%dH %s",23,c,"Hybrid Mode");
@@ -470,6 +477,7 @@ void updateTerminal(void){
 //		printf("\033[%d;%dH %s",23,c,"Electric Only Mode");
 //	}
 		
+ }
 }
 
 int _50_ms_task_delay = 0;
@@ -562,6 +570,8 @@ enum HMC_states hmc_state;
 
 int brake_threshold = 100;
 int clutch_threshold = 100;
+uint16_t motec_temp;
+uint16_t motec_temp_chk;
 
 
 void	_50_mSec_Tasks(void)
@@ -707,13 +717,24 @@ else
 {
 }
 
-	
+
+	motec_temp = input_vector.motor_rpm*6000/32767;
 	
 	// msg_safety_chk(); 
 	// send_output_msg(output_vector);
 	 safety_output_check(); // NOT DONE YET, NEED MAX AND MIN INFO FROM JAKE
 	 pedal_safety_check();
-	 
+
+
+	motec_msg.Data[0] = (uint8_t)(input_vector.motor_rpm >> 8); 
+	motec_msg.Data[1] = (uint8_t)(input_vector.motor_rpm & 0x00FF);
+
+	//motec_msg.Data[0] = (uint8_t)(motec_temp >> 8); 
+	//motec_msg.Data[1] = (uint8_t)(motec_temp & 0x00FF);
+
+	motec_temp_chk = (motec_msg.Data[0]<<8) + motec_msg.Data[1];
+
+	add_to_output_ring(motec_msg);
 	
 }
 

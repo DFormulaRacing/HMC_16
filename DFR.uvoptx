@@ -448,57 +448,27 @@
         <Ww>
           <count>2</count>
           <WinNumber>2</WinNumber>
-          <ItemText>input_vector,0x0A</ItemText>
+          <ItemText>input_vector.motor_rpm,0x10</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>2</WinNumber>
-          <ItemText>CLT_Read.bit</ItemText>
+          <ItemText>motec_msg.Data[0],0x10</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>2</WinNumber>
-          <ItemText>input_vector.bamocar_dout_1</ItemText>
+          <ItemText>motec_msg.Data[1]</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>2</WinNumber>
-          <ItemText>SPI_output_vector</ItemText>
+          <ItemText>motec_temp</ItemText>
         </Ww>
         <Ww>
           <count>6</count>
           <WinNumber>2</WinNumber>
-          <ItemText>ready_to_drive_flag</ItemText>
-        </Ww>
-        <Ww>
-          <count>7</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>car_mode</ItemText>
-        </Ww>
-        <Ww>
-          <count>8</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>safety_state</ItemText>
-        </Ww>
-        <Ww>
-          <count>9</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>ACCEL_PADAL_FAULT</ItemText>
-        </Ww>
-        <Ww>
-          <count>10</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>input_vector.accel_pot1,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>11</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>input_vector.accel_pot2,0x0A</ItemText>
-        </Ww>
-        <Ww>
-          <count>12</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>speed_command_debug</ItemText>
+          <ItemText>motec_temp_chk</ItemText>
         </Ww>
       </WatchWindow2>
       <Tracepoint>

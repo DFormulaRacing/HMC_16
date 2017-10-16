@@ -94,8 +94,7 @@ volatile typedef struct input_vector_s {
 	// ------- BMS inputs -------
 	
 	// CAN ID: 0x03B
-	int16_t	pack_current;
-	// 		pack_current;
+	short	pack_current;
 	int8_t		high_temp;
 	int8_t		low_temp;
 	int8_t		avg_temp;
@@ -127,7 +126,7 @@ volatile typedef struct input_vector_s {
 	uint16_t	high_opencell_voltage;
 	uint16_t	low_opencell_voltage;
 	uint16_t	pack_resistance;
-	float	pack_summed_voltage;
+	uint16_t	pack_summed_voltage;
 	
 	// ------ BAMOCAR inputs ------
 	

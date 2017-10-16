@@ -7,6 +7,8 @@
 #include "DFR_SPI.h" // need for ready_to_drive_flag
 #include "dfrshifter.h"
 
+#define SUMMED_VOLTAGE_CONVERSION (2^16-1)
+
 float desired_kP(void){
 
 	
@@ -54,7 +56,7 @@ float desired_kP(void){
 // uint16_t max_torque = 200; // N*m
 uint16_t max_torque = 30; // N*m for testing
 
-#define RPM_MAX (3000.0f)
+#define RPM_MAX (30000.0f)
 
 volatile CanTxMsg bamocar_speed_msg = 
 	{
@@ -98,7 +100,7 @@ float electric_torque(void){
 	return motor_torque;
 	#else
 	
-	float temp = ((input_vector.accel_pot1-120.0f)/(900.0f-120.0f))*RPM_MAX;
+	float temp = ((input_vector.accel_pot1-130.0f)/(1300.0f-130.0f))*RPM_MAX;
 	
 	if(temp > RPM_MAX){
 		temp = RPM_MAX;
@@ -301,7 +303,9 @@ void assign_inputs(void){
 		
 
 		// BMS 1
-	input_vector.pack_current 		= (short)(msgTable[6].data._16[0]);
+	//input_vector.pack_current 		= (short)(msgTable[6].data._16[0]);
+	input_vector.pack_current 		=  (msgTable[6].data._8[0] << 8) | (msgTable[6].data._8[1]); // test this
+	//input_vector.pack_current 		= (int16_t)(msgTable[6].data._16[0]);
 	input_vector.high_temp 				= (int8_t)(msgTable[6].data._8[2]);
 	input_vector.low_temp 				= (int8_t)(msgTable[6].data._8[3]);;
 	input_vector.avg_temp 				= (int8_t)(msgTable[6].data._8[4]);;
@@ -333,7 +337,10 @@ void assign_inputs(void){
 	input_vector.high_opencell_voltage 	= (msgTable[10].data._16[0]);
 	input_vector.low_opencell_voltage 	= (msgTable[10].data._16[1]);
 	input_vector.pack_resistance 				= (msgTable[10].data._16[2]);
-	input_vector.pack_summed_voltage 		= (msgTable[10].data._16[3]);
+//	input_vector.pack_summed_voltage 		= ((65535 - (msgTable[10].data._16[3])));
+	input_vector.pack_summed_voltage    = (msgTable[10].data._16[3])/100.0f;
+	
+	
 	
 		// ------ BAMOCAR inputs ------
 		// Have to use memcpy() because it's 16bit data in an 8bit address
@@ -349,11 +356,13 @@ void assign_inputs(void){
 	memcpy((void*)&input_vector.motor_voltage, (void*)&msgTable[14].data._8[1], sizeof(uint16_t));
 		// motor temperature
 	memcpy((void*)&input_vector.motor_temp, (void*)&msgTable[15].data._8[1], sizeof(uint16_t));
+		
 		// motor fault
-	memcpy((void*)&input_vector.bamocar_fault, (void*)&msgTable[16].data._8[1], sizeof(uint16_t));
+	memcpy((void*)&input_vector.bamocar_fault, (void*)&msgTable[16].data._8[1], sizeof(uint32_t));
+	input_vector.bamocar_fault = input_vector.bamocar_fault & 0x93E70000; // **** MASK TO look at data ****
+		
 		// bamoar bus voltage
 	memcpy((void*)&input_vector.bamocar_bus_voltage, (void*)&msgTable[17].data._8[1], sizeof(uint16_t));
-	
 	
 		// bamocar DOUT_1 ***** MAKE SURE THIS IS THE RIGHT WAY TO GET DOUT1********
 	memcpy((void*)&input_vector.bamocar_dout_1, (void*)&msgTable[18].data._8[1], sizeof(uint16_t));

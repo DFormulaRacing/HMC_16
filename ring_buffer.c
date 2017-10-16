@@ -36,7 +36,7 @@ volatile CanTxMsg output_ring_buff[OUTPUT_RING_SIZE]; // will need to make outpu
 #define BAMO_READ_REGID 0x3D
 #define _100_ms_transmission 0x64 // 0x64 = 100
 
-#define MOTOR_RPM_REGID 0x30
+#define MOTOR_RPM_REGID 0xA8
 #define MOTOR_CURRENT_REGID 0x5F
 #define MOTOR_TORQUE_REGID 0xA0
 #define MOTOR_VOLTAGE_REGID 0x8A
@@ -44,6 +44,7 @@ volatile CanTxMsg output_ring_buff[OUTPUT_RING_SIZE]; // will need to make outpu
 #define BAMOCAR_FAULT_REGID 0x8F
 #define BAMOCAR_BUS_VOLTAGE_REGID 0xFB
 #define BAMOCAR_D_OUT_1_REGID 0xE0
+#define HMC_STD_ID 0x7FF
 
 #define	INIT_MESSAGE_COUNT 8
 CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] = 
@@ -54,7 +55,7 @@ CanTxMsg bamocar_init_msg[INIT_MESSAGE_COUNT] =
 			CAN_RTR_Data,			//  uint8_t RTR;
 			3,								//  uint8_t DLC;
 												//  uint8_t Data[8];
-			{BAMO_READ_REGID, MOTOR_RPM_REGID, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00} 
+			{BAMO_READ_REGID, 0xA8, _100_ms_transmission, 0x00, 0x00, 0x00, 0x00, 0x00} 
 	},
 	{		TRANSMIT_TO_BAMO_ID,						//  uint32_t StdId;						2
 			0,								//  uint32_t ExtId; 
@@ -214,74 +215,35 @@ volatile CanTxMsg bamocar_msg =
 // ^REGID
 	};
 	
-
-
-//volatile int out_read_idx = 0;
-//volatile int out_write_idx = 3;
-//volatile int out_ring_count = 3;
-//volatile bool flag_can_busy;
-
-// change name ... don't think we need this anymore... just need add to ring buff
-
-// **** NOT NEEDED****
-/* void send_output_msg(output_vector_t output_vector[]){
-	int i;
-	for(i = 0; i<OUTPUT_VECTOR_SIZE-1; i++){
-		if(output_vector[i].update == 1){
-			switch(output_vector[i].select){
-				case(motor_torque_out): // CAN MESSAGE for Bamocar torque command
-					bamocar_msg.StdId = 0x180;
-					bamocar_msg.IDE = CAN_Id_Standard;
-					bamocar_msg.RTR = CAN_RTR_Data;
-					bamocar_msg.DLC = 3; // or 5
-					bamocar_msg.Data[0] = output_vector[i].CANID;
-					memcpy((void*)&bamocar_msg.Data[1], (void*)&output_vector[i].data, sizeof(uint16_t));
-					// port function from other header -> add_to_output_ring(bamocar_msg);
-					output_vector[i].update = 0;
-					break;
-				case(glvs_shutdown): // GLVS SHUTDOWN
-					// 
-					output_vector[i].update = 0;
-					break;
-				case(ready_to_drive): // READY TO DRIVE
-					//
-					output_vector[i].update = 0;
-					break;
-				case(shift_up): // SHIFT
-					//
-					output_vector[i].update = 0;
-					break;
-				case(shift_down):
-					//
-					output_vector[i].update = 0;
-					break;
-			}
-		}
-	}	
-};*/
-
-
-
-// **** NOT NEEDED****
-// extern output_vector_t output_vector[OUTPUT_VECTOR_SIZE];
-
-// **** NOT NEEDED****
-/*void update_output_vector(uint16_t data, output_t select){
-	int i;
+	volatile CanTxMsg motec_msg = 
+	{
+	HMC_STD_ID,								//  uint32_t StdId;  /*!< Specifies the standard identifier.
+										//                        This parameter can be a value between 0 to 0x7FF. */
+										//
+	0,					//  uint32_t ExtId;  /*!< Specifies the extended identifier.
+										//                        This parameter can be a value between 0 to 0x1FFFFFFF. */
+										//
+	CAN_Id_Standard,	//  uint8_t IDE;     /*!< Specifies the type of identifier for the message that 
+										//                        will be transmitted. This parameter can be a value 
+										//                        of @ref CAN_identifier_type */
+										//
+	CAN_RTR_Data,			//  uint8_t RTR;     /*!< Specifies the type of frame for the message that will 
+										//                        be transmitted. This parameter can be a value of 
+										//                        @ref CAN_remote_transmission_request */
+										//
+	2,								//  uint8_t DLC;     /*!< Specifies the length of the frame that will be 
+										//                        transmitted. This parameter can be a value between 
+										//                        0 to 8 */
+										//
+										//  uint8_t Data[8]; /*!< Contains the data to be transmitted. It ranges from 0 
+										//                        to 0xFF. */
+	{0,    0, 0 , 0, 0, 0, 0, 0}
 	
-	for(i = 0; i<OUTPUT_VECTOR_SIZE-1;i++){
-		if(output_vector[i].select == select){
-			output_vector[i].data = data;
-			output_vector[i].update = 1;
-			
-		}
-		else{
-			// do nothing...
-		}
-	}
+	};
 	
-	
-}*/
+
+
+
 
 bool send_from_output_buff (volatile CanTxMsg output_ring_buff[]) {
 	if (out_ring_count ==0) {
