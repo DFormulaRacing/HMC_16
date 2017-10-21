@@ -666,7 +666,7 @@ void	_50_mSec_Tasks(void)
 	// first check what mode the car is in (hybrid, electric, or gas)
 	// when in hybrid execture another state machine
 	//	
-if(safety_state == safety_four){
+if(safety_state == safety_four){ // CHANGE THIS BACK TO safety_four
 	switch (car_mode){
 		case(hybrid):
 			switch(hmc_state){
@@ -720,19 +720,24 @@ else
 
 	motec_temp = input_vector.motor_rpm*6000/32767;
 	
-	// msg_safety_chk(); 
-	// send_output_msg(output_vector);
-	 safety_output_check(); // NOT DONE YET, NEED MAX AND MIN INFO FROM JAKE
-	 pedal_safety_check();
 
+	safety_output_check(); // NOT DONE YET, NEED MAX AND MIN INFO FROM JAKE
+	pedal_safety_check();
 
+	// input_vector.motor_current
+	// input_vector.motor_voltage
+
+	// Motor RPM
 	motec_msg.Data[0] = (uint8_t)(input_vector.motor_rpm >> 8); 
 	motec_msg.Data[1] = (uint8_t)(input_vector.motor_rpm & 0x00FF);
-
-	//motec_msg.Data[0] = (uint8_t)(motec_temp >> 8); 
-	//motec_msg.Data[1] = (uint8_t)(motec_temp & 0x00FF);
-
 	motec_temp_chk = (motec_msg.Data[0]<<8) + motec_msg.Data[1];
+	// Motor Current
+	motec_msg.Data[2] = (uint8_t)(input_vector.motor_current >> 8); 
+	motec_msg.Data[3] = (uint8_t)(input_vector.motor_current & 0x00FF);
+
+	// Motor Voltage
+	motec_msg.Data[4] = (uint8_t)(input_vector.motor_voltage >> 8); 
+	motec_msg.Data[5] = (uint8_t)(input_vector.motor_voltage & 0x00FF);
 
 	add_to_output_ring(motec_msg);
 	

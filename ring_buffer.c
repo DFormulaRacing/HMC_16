@@ -254,7 +254,7 @@ bool send_from_output_buff (volatile CanTxMsg output_ring_buff[]) {
 	CAN_Transmit(CAN1, (CanTxMsg*)&output_ring_buff[out_read_idx]);
 
 	out_ring_count--;
-	if(out_ring_count<0)
+	if(out_ring_count<0) 
 	{
 		ringCounter=0;
 	}
@@ -272,7 +272,7 @@ bool send_from_output_buff (volatile CanTxMsg output_ring_buff[]) {
 	return true;
 }
 
-void add_to_output_ring (CanTxMsg x) {
+void add_to_output_ring (CanTxMsg x) { 
 	if(out_ring_count >= OUTPUT_RING_SIZE) {
 		//while(1);
 		// BUFFER IS FULL!
