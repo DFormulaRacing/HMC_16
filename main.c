@@ -219,6 +219,7 @@ void updateTerminal(void);
  * main: blink LED and check button state
  *----------------------------------------------------------------------------*/
  int main (void) {
+	 
      int32_t max_num = LED_GetCount();
 
 	//SystemCoreClockConfigure();                              /* configure HSI as System Clock */
