@@ -134,12 +134,13 @@ volatile typedef struct input_vector_s {
 	uint16_t	motor_rpm;
 	uint16_t	motor_current;
 	uint16_t	motor_torque_rdval;
-	uint16_t 	motor_voltage;
+	uint16_t 	motor_v_out;
 	uint16_t	motor_temp;
 	uint16_t	bamocar_fault;
 	uint16_t	bamocar_bus_voltage;
 	uint16_t	bamocar_dout_1;
 	
+	uint16_t	motor_phase_voltage;
 
 	// ------ Shifter algorithm inputs -----
 	enum gear c_gear; // Current Gear Position

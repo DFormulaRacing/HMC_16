@@ -63,7 +63,7 @@ volatile CAN_msg_t msgTable[] =
 	//{0x00, STD, 0} // BMS 6
 
 	// BAMOCAR messages
-	{0x180, STD, 0xA8, 0, 1,12, column, "BAMO1",0,0}, // BAMOCAR 1 - RPM
+	{0x180, STD, 0xA8, 0, 1,12, column, "BAMO1",0,0}, // BAMOCAR 1 - Motor RPM
 	{0x180, STD, 0x5F, 0, 1,13, column, "BAMO2",0,0}, // BAMOCAR 2 - Motor Current // change to reg 27..?
 	{0x180, STD, 0xA0, 0, 1,14, column, "BAMO3",0,0}, // BAMOCAR 3 - Motor Torque
 	{0x180, STD, 0x8A, 0, 1,15, column, "BAMO4",0,0}, // BAMOCAR 4 - Motor Voltage
@@ -219,7 +219,7 @@ void updateTerminal(void);
  * main: blink LED and check button state
  *----------------------------------------------------------------------------*/
  int main (void) {
-    int32_t max_num = LED_GetCount();
+     int32_t max_num = LED_GetCount();
 
 	//SystemCoreClockConfigure();                              /* configure HSI as System Clock */
   SystemCoreClockUpdate();
@@ -724,8 +724,6 @@ else
 	safety_output_check(); // NOT DONE YET, NEED MAX AND MIN INFO FROM JAKE
 	pedal_safety_check();
 
-	// input_vector.motor_current
-	// input_vector.motor_voltage
 
 	// Motor RPM
 	motec_msg.Data[0] = (uint8_t)(input_vector.motor_rpm >> 8); 
@@ -735,9 +733,9 @@ else
 	motec_msg.Data[2] = (uint8_t)(input_vector.motor_current >> 8); 
 	motec_msg.Data[3] = (uint8_t)(input_vector.motor_current & 0x00FF);
 
-	// Motor Voltage
-	motec_msg.Data[4] = (uint8_t)(input_vector.motor_voltage >> 8); 
-	motec_msg.Data[5] = (uint8_t)(input_vector.motor_voltage & 0x00FF);
+	// Motor Phase Voltage
+	motec_msg.Data[4] = (uint8_t)(input_vector.motor_phase_voltage >> 8); 
+	motec_msg.Data[5] = (uint8_t)(input_vector.motor_phase_voltage & 0x00FF);
 
 	add_to_output_ring(motec_msg);
 	

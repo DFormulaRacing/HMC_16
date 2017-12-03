@@ -231,7 +231,7 @@ volatile CanTxMsg bamocar_msg =
 										//                        be transmitted. This parameter can be a value of 
 										//                        @ref CAN_remote_transmission_request */
 										//
-	2,								//  uint8_t DLC;     /*!< Specifies the length of the frame that will be 
+	8,								//  uint8_t DLC;     /*!< Specifies the length of the frame that will be 
 										//                        transmitted. This parameter can be a value between 
 										//                        0 to 8 */
 										//

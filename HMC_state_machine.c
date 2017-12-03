@@ -407,7 +407,7 @@ void assign_inputs(void){
 		// motor torque read value
 	memcpy((void*)&input_vector.motor_torque_rdval, (void*)&msgTable[13].data._8[1], sizeof(uint16_t));
 		// motor voltage
-	memcpy((void*)&input_vector.motor_voltage, (void*)&msgTable[14].data._8[1], sizeof(uint16_t));
+	memcpy((void*)&input_vector.motor_v_out, (void*)&msgTable[14].data._8[1], sizeof(uint16_t));
 		// motor temperature
 	memcpy((void*)&input_vector.motor_temp, (void*)&msgTable[15].data._8[1], sizeof(uint16_t));
 		
@@ -421,12 +421,11 @@ void assign_inputs(void){
 		// bamocar DOUT_1 ***** MAKE SURE THIS IS THE RIGHT WAY TO GET DOUT1********
 	memcpy((void*)&input_vector.bamocar_dout_1, (void*)&msgTable[18].data._8[1], sizeof(uint16_t));
 	
-	
+	input_vector.motor_phase_voltage = (uint16_t)((input_vector.bamocar_bus_voltage/(1.41412f))*(input_vector.motor_current/4096)*(0.94f));
 	
 	// End of input assignments
 	
 	
-
 	
 }
 
